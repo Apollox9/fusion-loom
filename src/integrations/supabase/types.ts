@@ -14,7 +14,721 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agents: {
+        Row: {
+          business_name: string
+          country: string | null
+          created_at: string
+          id: string
+          region: string | null
+          registered_at: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          business_name: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          region?: string | null
+          registered_at?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          business_name?: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          region?: string | null
+          registered_at?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      audit_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_type: string
+          created_at: string
+          details: Json | null
+          id: string
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_type: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_type?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
+      }
+      classes: {
+        Row: {
+          class_id: string | null
+          created_at: string
+          id: string
+          is_attended: boolean
+          name: string
+          school_id: string
+          total_students_served_in_class: number
+          updated_at: string
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          is_attended?: boolean
+          name: string
+          school_id: string
+          total_students_served_in_class?: number
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          is_attended?: boolean
+          name?: string
+          school_id?: string
+          total_students_served_in_class?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          participants: string[]
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participants: string[]
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participants?: string[]
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      machine_locations: {
+        Row: {
+          created_at: string
+          id: string
+          lat: number
+          lng: number
+          machine_id: string
+          provider: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lat: number
+          lng: number
+          machine_id: string
+          provider?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lat?: number
+          lng?: number
+          machine_id?: string
+          provider?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_locations_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machines: {
+        Row: {
+          active_session: string | null
+          created_at: string
+          device_id: string
+          firmware_version: string | null
+          id: string
+          is_online: boolean
+          is_printing: boolean
+          last_seen_at: string | null
+          model: string | null
+          secret_key: string
+          sessions_held: number
+          up_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          active_session?: string | null
+          created_at?: string
+          device_id: string
+          firmware_version?: string | null
+          id?: string
+          is_online?: boolean
+          is_printing?: boolean
+          last_seen_at?: string | null
+          model?: string | null
+          secret_key: string
+          sessions_held?: number
+          up_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active_session?: string | null
+          created_at?: string
+          device_id?: string
+          firmware_version?: string | null
+          id?: string
+          is_online?: boolean
+          is_printing?: boolean
+          last_seen_at?: string | null
+          model?: string | null
+          secret_key?: string
+          sessions_held?: number
+          up_time?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          attachments: Json | null
+          conversation_id: string
+          created_at: string
+          id: string
+          is_read_by: Json | null
+          sender_role: Database["public"]["Enums"]["user_role"] | null
+          sender_user_id: string | null
+          text: string
+        }
+        Insert: {
+          attachments?: Json | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_read_by?: Json | null
+          sender_role?: Database["public"]["Enums"]["user_role"] | null
+          sender_user_id?: string | null
+          text: string
+        }
+        Update: {
+          attachments?: Json | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_read_by?: Json | null
+          sender_role?: Database["public"]["Enums"]["user_role"] | null
+          sender_user_id?: string | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          delivered_at: string | null
+          id: string
+          is_read: boolean
+          level: Database["public"]["Enums"]["notification_level"]
+          meta: Json | null
+          sender_user_id: string | null
+          target_id: string | null
+          target_type: string | null
+          title: string
+        }
+        Insert: {
+          body: string
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          is_read?: boolean
+          level?: Database["public"]["Enums"]["notification_level"]
+          meta?: Json | null
+          sender_user_id?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          title: string
+        }
+        Update: {
+          body?: string
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          is_read?: boolean
+          level?: Database["public"]["Enums"]["notification_level"]
+          meta?: Json | null
+          sender_user_id?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          dark_count: number
+          id: string
+          light_count: number
+          order_id: string
+          printed_dark: number
+          printed_light: number
+          status: string
+          student_id: string | null
+          student_name_cached: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dark_count?: number
+          id?: string
+          light_count?: number
+          order_id: string
+          printed_dark?: number
+          printed_light?: number
+          status?: string
+          student_id?: string | null
+          student_name_cached: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dark_count?: number
+          id?: string
+          light_count?: number
+          order_id?: string
+          printed_dark?: number
+          printed_light?: number
+          status?: string
+          student_id?: string | null
+          student_name_cached?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          assigned_facility_id: string | null
+          assigned_operator_id: string | null
+          audit_trail: Json | null
+          auto_confirmed_at: string | null
+          confirm_received_at: string | null
+          created_at: string
+          created_by_school: string
+          created_by_user: string | null
+          delivery: Json | null
+          external_ref: string | null
+          id: string
+          packaging: Json | null
+          pickup: Json | null
+          printing: Json | null
+          queued_at: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          submission_time: string | null
+          total_garments: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_facility_id?: string | null
+          assigned_operator_id?: string | null
+          audit_trail?: Json | null
+          auto_confirmed_at?: string | null
+          confirm_received_at?: string | null
+          created_at?: string
+          created_by_school: string
+          created_by_user?: string | null
+          delivery?: Json | null
+          external_ref?: string | null
+          id?: string
+          packaging?: Json | null
+          pickup?: Json | null
+          printing?: Json | null
+          queued_at?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          submission_time?: string | null
+          total_garments?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_facility_id?: string | null
+          assigned_operator_id?: string | null
+          audit_trail?: Json | null
+          auto_confirmed_at?: string | null
+          confirm_received_at?: string | null
+          created_at?: string
+          created_by_school?: string
+          created_by_user?: string | null
+          delivery?: Json | null
+          external_ref?: string | null
+          id?: string
+          packaging?: Json | null
+          pickup?: Json | null
+          printing?: Json | null
+          queued_at?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          submission_time?: string | null
+          total_garments?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_created_by_school_fkey"
+            columns: ["created_by_school"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      print_events: {
+        Row: {
+          created_at: string
+          id: string
+          idempotency_key: string
+          payload: Json
+          print_job_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          payload: Json
+          print_job_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          payload?: Json
+          print_job_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          full_name: string
+          id: string
+          last_seen_at: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          full_name: string
+          id: string
+          last_seen_at?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          last_seen_at?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schools: {
+        Row: {
+          category: string | null
+          country: string | null
+          created_at: string
+          district: string | null
+          email: string | null
+          id: string
+          is_served: boolean
+          is_session_active: boolean
+          name: string
+          notification_preferences: Json | null
+          phone_number1: string | null
+          phone_number2: string | null
+          postal_address: string | null
+          region: string | null
+          registered_on: string | null
+          school_id: string | null
+          service_pass_code: string
+          total_student_count: number
+          total_students_served_in_school: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          country?: string | null
+          created_at?: string
+          district?: string | null
+          email?: string | null
+          id?: string
+          is_served?: boolean
+          is_session_active?: boolean
+          name: string
+          notification_preferences?: Json | null
+          phone_number1?: string | null
+          phone_number2?: string | null
+          postal_address?: string | null
+          region?: string | null
+          registered_on?: string | null
+          school_id?: string | null
+          service_pass_code: string
+          total_student_count?: number
+          total_students_served_in_school?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          country?: string | null
+          created_at?: string
+          district?: string | null
+          email?: string | null
+          id?: string
+          is_served?: boolean
+          is_session_active?: boolean
+          name?: string
+          notification_preferences?: Json | null
+          phone_number1?: string | null
+          phone_number2?: string | null
+          postal_address?: string | null
+          region?: string | null
+          registered_on?: string | null
+          school_id?: string | null
+          service_pass_code?: string
+          total_student_count?: number
+          total_students_served_in_school?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_metrics: {
+        Row: {
+          avg_completion_time_seconds: number | null
+          created_at: string
+          efficiency_score: number | null
+          id: string
+          period_end: string
+          period_start: string
+          staff_user_id: string
+          tasks_assigned: number
+          tasks_completed: number
+        }
+        Insert: {
+          avg_completion_time_seconds?: number | null
+          created_at?: string
+          efficiency_score?: number | null
+          id?: string
+          period_end: string
+          period_start: string
+          staff_user_id: string
+          tasks_assigned?: number
+          tasks_completed?: number
+        }
+        Update: {
+          avg_completion_time_seconds?: number | null
+          created_at?: string
+          efficiency_score?: number | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          staff_user_id?: string
+          tasks_assigned?: number
+          tasks_completed?: number
+        }
+        Relationships: []
+      }
+      staff_tasks: {
+        Row: {
+          assigned_at: string
+          completed_at: string | null
+          created_at: string
+          expected_at: string | null
+          feedback: string | null
+          id: string
+          rating: number | null
+          staff_user_id: string
+          status: string
+          target_id: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          completed_at?: string | null
+          created_at?: string
+          expected_at?: string | null
+          feedback?: string | null
+          id?: string
+          rating?: number | null
+          staff_user_id: string
+          status?: string
+          target_id?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          completed_at?: string | null
+          created_at?: string
+          expected_at?: string | null
+          feedback?: string | null
+          id?: string
+          rating?: number | null
+          staff_user_id?: string
+          status?: string
+          target_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          class_id: string
+          created_at: string
+          dark_garments_printed: boolean
+          full_name: string
+          id: string
+          is_served: boolean
+          light_garments_printed: boolean
+          printed_dark_garment_count: number
+          printed_light_garment_count: number
+          school_id: string
+          student_id: string | null
+          total_dark_garment_count: number
+          total_light_garment_count: number
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          dark_garments_printed?: boolean
+          full_name: string
+          id?: string
+          is_served?: boolean
+          light_garments_printed?: boolean
+          printed_dark_garment_count?: number
+          printed_light_garment_count?: number
+          school_id: string
+          student_id?: string | null
+          total_dark_garment_count?: number
+          total_light_garment_count?: number
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          dark_garments_printed?: boolean
+          full_name?: string
+          id?: string
+          is_served?: boolean
+          light_garments_printed?: boolean
+          printed_dark_garment_count?: number
+          printed_light_garment_count?: number
+          school_id?: string
+          student_id?: string | null
+          total_dark_garment_count?: number
+          total_light_garment_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +737,28 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      notification_channel: "IN_APP" | "EMAIL" | "SMS" | "PUSH"
+      notification_level: "INFO" | "WARNING" | "ERROR"
+      order_status:
+        | "UNSUBMITTED"
+        | "SUBMITTED"
+        | "QUEUED"
+        | "PICKUP"
+        | "ONGOING"
+        | "ABORTED"
+        | "DONE"
+        | "PACKAGING"
+        | "DELIVERY"
+        | "COMPLETED"
+        | "CONFIRMED"
+        | "AUTO_CONFIRMED"
+      user_role:
+        | "ADMIN"
+        | "OPERATOR"
+        | "AUDITOR"
+        | "SUPERVISOR"
+        | "AGENT"
+        | "SCHOOL_USER"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +885,31 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      notification_channel: ["IN_APP", "EMAIL", "SMS", "PUSH"],
+      notification_level: ["INFO", "WARNING", "ERROR"],
+      order_status: [
+        "UNSUBMITTED",
+        "SUBMITTED",
+        "QUEUED",
+        "PICKUP",
+        "ONGOING",
+        "ABORTED",
+        "DONE",
+        "PACKAGING",
+        "DELIVERY",
+        "COMPLETED",
+        "CONFIRMED",
+        "AUTO_CONFIRMED",
+      ],
+      user_role: [
+        "ADMIN",
+        "OPERATOR",
+        "AUDITOR",
+        "SUPERVISOR",
+        "AGENT",
+        "SCHOOL_USER",
+      ],
+    },
   },
 } as const
