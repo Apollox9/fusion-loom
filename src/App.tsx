@@ -8,6 +8,10 @@ import { Navbar } from "@/components/layout/Navbar";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
+import SchoolsPage from "./pages/SchoolsPage";
+import OrdersPage from "./pages/OrdersPage";
+import MachinesPage from "./pages/MachinesPage";
+import ConversationsPage from "./pages/ConversationsPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -72,6 +76,26 @@ const App = () => (
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/schools" element={
+            <ProtectedRoute>
+              <SchoolsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/orders" element={
+            <ProtectedRoute>
+              <OrdersPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/machines" element={
+            <ProtectedRoute>
+              <MachinesPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/conversations" element={
+            <ProtectedRoute>
+              <ConversationsPage />
             </ProtectedRoute>
           } />
           <Route path="*" element={<NotFound />} />
