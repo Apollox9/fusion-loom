@@ -26,8 +26,15 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					variant: 'hsl(var(--primary-variant))'
 				},
+				'electric-blue': {
+					DEFAULT: 'hsl(var(--electric-blue))',
+					light: 'hsl(var(--electric-blue-light))'
+				},
+				'neon-accent': 'hsl(var(--neon-accent))',
+				'neon-purple': 'hsl(var(--neon-purple))',
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
 					foreground: 'hsl(var(--secondary-foreground))'
@@ -63,6 +70,18 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			backgroundImage: {
+				'gradient-hero': 'var(--gradient-hero)',
+				'gradient-card': 'var(--gradient-card)',
+				'gradient-neon': 'var(--gradient-neon)',
+				'gradient-electric': 'var(--gradient-electric)'
+			},
+			boxShadow: {
+				'primary': 'var(--shadow-primary)',
+				'electric': 'var(--shadow-electric)',
+				'neon': 'var(--shadow-neon)',
+				'card': 'var(--shadow-card)'
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
@@ -88,7 +107,12 @@ export default {
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fadeIn 0.6s ease-out forwards',
+				'slide-up': 'slideUp 0.8s ease-out forwards',
+				'scale-in': 'scaleIn 0.5s ease-out forwards',
+				'glow': 'glow 2s ease-in-out infinite alternate',
+				'float': 'float 3s ease-in-out infinite'
 			}
 		}
 	},
