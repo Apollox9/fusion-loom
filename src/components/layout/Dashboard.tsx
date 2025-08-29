@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnalyticsTab } from '@/components/analytics/AnalyticsTab';
+import { FinancesTab } from '@/components/finances/FinancesTab';
 import { 
   Building2, 
   Users, 
@@ -12,7 +13,8 @@ import {
   Plus,
   Activity,
   BarChart3,
-  Home
+  Home,
+  DollarSign
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -47,7 +49,7 @@ export function Dashboard() {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsList className="grid w-full grid-cols-3 max-w-lg">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
               Overview
@@ -55,6 +57,10 @@ export function Dashboard() {
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="finances" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Smart Finances
             </TabsTrigger>
           </TabsList>
 
@@ -193,6 +199,10 @@ export function Dashboard() {
 
           <TabsContent value="analytics">
             <AnalyticsTab />
+          </TabsContent>
+
+          <TabsContent value="finances">
+            <FinancesTab />
           </TabsContent>
         </Tabs>
       </div>
