@@ -8,6 +8,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
+import ClientPortalPage from "./pages/ClientPortalPage";
 import SchoolsPage from "./pages/SchoolsPage";
 import OrdersPage from "./pages/OrdersPage";
 import MachinesPage from "./pages/MachinesPage";
@@ -76,6 +77,11 @@ const App = () => (
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/client-portal" element={
+            <ProtectedRoute>
+              <ClientPortalPage />
             </ProtectedRoute>
           } />
           <Route path="/schools" element={

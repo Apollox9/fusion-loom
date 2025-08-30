@@ -54,6 +54,9 @@ export function Navbar() {
               <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
                 Dashboard
               </Link>
+              <Link to="/client-portal" className="text-muted-foreground hover:text-foreground transition-colors">
+                Client Portal
+              </Link>
               <Link to="/schools" className="text-muted-foreground hover:text-foreground transition-colors">
                 Schools
               </Link>
