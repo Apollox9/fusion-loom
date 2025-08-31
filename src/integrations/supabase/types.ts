@@ -80,6 +80,57 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_reports: {
+        Row: {
+          auditor_id: string
+          auditor_user_id: string
+          created_at: string
+          discrepancies_found: boolean
+          id: string
+          report_details: Json
+          school_id: string
+          sent_to_school_at: string | null
+          session_id: string
+          status: string
+          students_with_discrepancies: number
+          submitted_to_admin_at: string | null
+          total_students_audited: number
+          updated_at: string
+        }
+        Insert: {
+          auditor_id: string
+          auditor_user_id: string
+          created_at?: string
+          discrepancies_found?: boolean
+          id?: string
+          report_details?: Json
+          school_id: string
+          sent_to_school_at?: string | null
+          session_id: string
+          status?: string
+          students_with_discrepancies?: number
+          submitted_to_admin_at?: string | null
+          total_students_audited?: number
+          updated_at?: string
+        }
+        Update: {
+          auditor_id?: string
+          auditor_user_id?: string
+          created_at?: string
+          discrepancies_found?: boolean
+          id?: string
+          report_details?: Json
+          school_id?: string
+          sent_to_school_at?: string | null
+          session_id?: string
+          status?: string
+          students_with_discrepancies?: number
+          submitted_to_admin_at?: string | null
+          total_students_audited?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       classes: {
         Row: {
           class_id: string | null
@@ -662,6 +713,68 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      student_audits: {
+        Row: {
+          audit_report_id: string
+          audited_at: string
+          auditor_notes: string | null
+          class_name: string
+          collected_dark_garments: number
+          collected_light_garments: number
+          created_at: string
+          dark_garments_discrepancy: number
+          has_discrepancy: boolean
+          id: string
+          light_garments_discrepancy: number
+          student_id: string
+          student_name: string
+          submitted_dark_garments: number
+          submitted_light_garments: number
+        }
+        Insert: {
+          audit_report_id: string
+          audited_at?: string
+          auditor_notes?: string | null
+          class_name: string
+          collected_dark_garments?: number
+          collected_light_garments?: number
+          created_at?: string
+          dark_garments_discrepancy?: number
+          has_discrepancy?: boolean
+          id?: string
+          light_garments_discrepancy?: number
+          student_id: string
+          student_name: string
+          submitted_dark_garments?: number
+          submitted_light_garments?: number
+        }
+        Update: {
+          audit_report_id?: string
+          audited_at?: string
+          auditor_notes?: string | null
+          class_name?: string
+          collected_dark_garments?: number
+          collected_light_garments?: number
+          created_at?: string
+          dark_garments_discrepancy?: number
+          has_discrepancy?: boolean
+          id?: string
+          light_garments_discrepancy?: number
+          student_id?: string
+          student_name?: string
+          submitted_dark_garments?: number
+          submitted_light_garments?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_audits_audit_report_id_fkey"
+            columns: ["audit_report_id"]
+            isOneToOne: false
+            referencedRelation: "audit_reports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       students: {
         Row: {
