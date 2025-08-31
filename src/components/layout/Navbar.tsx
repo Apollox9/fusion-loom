@@ -66,6 +66,9 @@ export function Navbar() {
               <Link to="/machines" className="text-muted-foreground hover:text-foreground transition-colors">
                 Machines
               </Link>
+              <Link to="/staff" className="text-muted-foreground hover:text-foreground transition-colors">
+                Staff
+              </Link>
               <Link to="/conversations" className="text-muted-foreground hover:text-foreground transition-colors">
                 Chat
               </Link>

@@ -12,6 +12,7 @@ import ClientPortalPage from "./pages/ClientPortalPage";
 import SchoolsPage from "./pages/SchoolsPage";
 import OrdersPage from "./pages/OrdersPage";
 import MachinesPage from "./pages/MachinesPage";
+import StaffPage from "./pages/StaffPage";
 import ConversationsPage from "./pages/ConversationsPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -97,6 +98,11 @@ const App = () => (
           <Route path="/machines" element={
             <ProtectedRoute>
               <MachinesPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff" element={
+            <ProtectedRoute>
+              <StaffPage />
             </ProtectedRoute>
           } />
           <Route path="/conversations" element={

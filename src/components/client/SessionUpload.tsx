@@ -97,8 +97,8 @@ export function SessionUpload({ onComplete, onCancel, schoolName }: SessionUploa
           fullName: row[0] || '',
           darkGarments: parseInt(row[1]) || 0,
           lightGarments: parseInt(row[2]) || 0,
-          paid: row[3] === true || row[3] === 'TRUE' || row[3] === 1 || row[3] === '✓'
-        })).filter(student => student.fullName && student.paid); // Only include paid students
+          paid: row[3] === true || row[3] === 'TRUE' || row[3] === 1 || row[3] === '✓' || row[3] === 'true'
+        })).filter(student => student.fullName.trim() && student.paid); // Only include paid students
 
         classesData.push({
           className,
