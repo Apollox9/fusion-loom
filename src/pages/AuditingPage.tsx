@@ -195,6 +195,67 @@ export default function AuditingPage() {
     });
   };
 
+  const generateDiscrepancyMessage = (
+    collectedDark: number,
+    collectedLight: number,
+    submittedDark: number,
+    submittedLight: number
+  ): string => {
+    const messages: string[] = [];
+    
+    // Check dark garments
+    if (collectedDark === 0 && submittedDark > 0) {
+      messages.push("No dark garments collected at all");
+    } else if (collectedDark > submittedDark) {
+      messages.push("Collected dark garments exceed the number of submitted ones");
+    } else if (collectedDark < submittedDark) {
+      messages.push("Collected dark garments are fewer than the number of submitted ones");
+    }
+    
+    // Check light garments
+    if (collectedLight === 0 && submittedLight > 0) {
+      messages.push("No light garments collected at all");
+    } else if (collectedLight > submittedLight) {
+      messages.push("Collected light garments exceed the number of submitted ones");
+    } else if (collectedLight < submittedLight) {
+      messages.push("Collected light garments are fewer than the number of submitted ones");
+    }
+    
+    // Check if no garments collected at all
+    if (collectedDark === 0 && collectedLight === 0 && (submittedDark > 0 || submittedLight > 0)) {
+      return "No garments collected at all";
+    }
+    
+    return messages.join(". ");
+  };
+
+  const updateStudentProductionData = async (audit: StudentAudit) => {
+    if (!selectedStudent) return;
+
+    try {
+      // Update the student record with audited garment counts
+      const { error } = await supabase
+        .from('students')
+        .update({
+          total_dark_garment_count: audit.collected_dark_garments,
+          total_light_garment_count: audit.collected_light_garments,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedStudent.id);
+
+      if (error) {
+        console.error('Error updating student production data:', error);
+        toast({
+          title: 'Warning',
+          description: 'Audit saved but production data update failed',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating student production data:', error);
+    }
+  };
+
   const publishStudentAudit = async (
     collectedDark: number,
     collectedLight: number,
@@ -206,16 +267,31 @@ export default function AuditingPage() {
     const lightDiscrepancy = collectedLight - selectedStudent.total_light_garment_count;
     const hasDiscrepancy = darkDiscrepancy !== 0 || lightDiscrepancy !== 0;
 
+    // Generate automatic discrepancy message if there's a discrepancy
+    let finalNotes = notes;
+    if (hasDiscrepancy) {
+      const discrepancyMessage = generateDiscrepancyMessage(
+        collectedDark,
+        collectedLight,
+        selectedStudent.total_dark_garment_count,
+        selectedStudent.total_light_garment_count
+      );
+      finalNotes = notes ? `${notes}. ${discrepancyMessage}` : discrepancyMessage;
+    }
+
     const audit: StudentAudit = {
       student_id: selectedStudent.id,
       collected_dark_garments: collectedDark,
       collected_light_garments: collectedLight,
-      auditor_notes: notes,
+      auditor_notes: finalNotes,
       has_discrepancy: hasDiscrepancy,
       is_published: true
     };
 
     setStudentAudits(new Map(studentAudits.set(selectedStudent.id, audit)));
+
+    // Update student production data with audited values
+    await updateStudentProductionData(audit);
 
     // Update session data with audit status
     if (sessionData && selectedClass) {
