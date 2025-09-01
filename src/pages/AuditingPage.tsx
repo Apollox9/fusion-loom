@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, CheckCircle, AlertTriangle, Send, FileText } from 'lucide-react';
+import { Search, CheckCircle, AlertTriangle, Send, FileText, Save, Users, BookOpen, ArrowLeft } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -17,12 +17,15 @@ interface Student {
   total_dark_garment_count: number;
   total_light_garment_count: number;
   class_name: string;
+  audit_status?: 'not_audited' | 'matched' | 'discrepancy';
 }
 
 interface Class {
   id: string;
   name: string;
   students: Student[];
+  audited_count: number;
+  total_count: number;
 }
 
 interface SessionData {
@@ -37,6 +40,7 @@ interface StudentAudit {
   collected_light_garments: number;
   auditor_notes: string;
   has_discrepancy: boolean;
+  is_published: boolean;
 }
 
 interface AuditReport {
@@ -45,7 +49,10 @@ interface AuditReport {
   total_students_audited: number;
   students_with_discrepancies: number;
   status: string;
+  created_at: string;
 }
+
+type AuditView = 'search' | 'classes' | 'class_detail' | 'student_audit';
 
 export default function AuditingPage() {
   const { toast } = useToast();
@@ -58,24 +65,26 @@ export default function AuditingPage() {
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loadingSession, setLoadingSession] = useState(false);
   
+  // Navigation states
+  const [currentView, setCurrentView] = useState<AuditView>('search');
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  
+  // Search states
+  const [classSearch, setClassSearch] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  
   // Audit states
-  const [currentClassIndex, setCurrentClassIndex] = useState(0);
-  const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
   const [studentAudits, setStudentAudits] = useState<Map<string, StudentAudit>>(new Map());
-  const [isAuditing, setIsAuditing] = useState(false);
+  const [currentAuditReportId, setCurrentAuditReportId] = useState<string | null>(null);
   
   // Report states
   const [auditReports, setAuditReports] = useState<AuditReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
 
-  // Current student being audited
-  const currentClass = sessionData?.classes[currentClassIndex];
-  const currentStudent = currentClass?.students[currentStudentIndex];
-  const currentAudit = currentStudent ? studentAudits.get(currentStudent.id) : null;
-
-  // Progress calculation
+  // Progress calculations
   const totalStudents = sessionData?.classes.reduce((total, cls) => total + cls.students.length, 0) || 0;
-  const auditedStudents = studentAudits.size;
+  const auditedStudents = Array.from(studentAudits.values()).filter(audit => audit.is_published).length;
   const progress = totalStudents > 0 ? (auditedStudents / totalStudents) * 100 : 0;
 
   useEffect(() => {
@@ -111,7 +120,6 @@ export default function AuditingPage() {
     setLoadingSession(true);
     try {
       // Mock session data - in real implementation, fetch from orders table
-      // For now, creating sample data structure
       const mockSessionData: SessionData = {
         school_id: 'sample-school-id',
         school_name: 'Sample Primary School',
@@ -119,26 +127,28 @@ export default function AuditingPage() {
           {
             id: 'class-1',
             name: 'Grade 1A',
+            audited_count: 0,
+            total_count: 2,
             students: [
-              { id: 'student-1', full_name: 'John Doe', total_dark_garment_count: 3, total_light_garment_count: 2, class_name: 'Grade 1A' },
-              { id: 'student-2', full_name: 'Jane Smith', total_dark_garment_count: 2, total_light_garment_count: 3, class_name: 'Grade 1A' }
+              { id: 'student-1', full_name: 'John Doe', total_dark_garment_count: 3, total_light_garment_count: 2, class_name: 'Grade 1A', audit_status: 'not_audited' },
+              { id: 'student-2', full_name: 'Jane Smith', total_dark_garment_count: 2, total_light_garment_count: 3, class_name: 'Grade 1A', audit_status: 'not_audited' }
             ]
           },
           {
             id: 'class-2',
             name: 'Grade 1B',
+            audited_count: 0,
+            total_count: 2,
             students: [
-              { id: 'student-3', full_name: 'Bob Johnson', total_dark_garment_count: 4, total_light_garment_count: 1, class_name: 'Grade 1B' },
-              { id: 'student-4', full_name: 'Alice Brown', total_dark_garment_count: 2, total_light_garment_count: 4, class_name: 'Grade 1B' }
+              { id: 'student-3', full_name: 'Bob Johnson', total_dark_garment_count: 4, total_light_garment_count: 1, class_name: 'Grade 1B', audit_status: 'not_audited' },
+              { id: 'student-4', full_name: 'Alice Brown', total_dark_garment_count: 2, total_light_garment_count: 4, class_name: 'Grade 1B', audit_status: 'not_audited' }
             ]
           }
         ]
       };
 
       setSessionData(mockSessionData);
-      setIsAuditing(true);
-      setCurrentClassIndex(0);
-      setCurrentStudentIndex(0);
+      setCurrentView('classes');
       setStudentAudits(new Map());
 
       toast({
@@ -157,125 +167,203 @@ export default function AuditingPage() {
     }
   };
 
-  const auditStudent = (
+  const saveStudentAudit = (
     collectedDark: number,
     collectedLight: number,
     notes: string
   ) => {
-    if (!currentStudent) return;
+    if (!selectedStudent) return;
 
-    const darkDiscrepancy = collectedDark - currentStudent.total_dark_garment_count;
-    const lightDiscrepancy = collectedLight - currentStudent.total_light_garment_count;
+    const darkDiscrepancy = collectedDark - selectedStudent.total_dark_garment_count;
+    const lightDiscrepancy = collectedLight - selectedStudent.total_light_garment_count;
     const hasDiscrepancy = darkDiscrepancy !== 0 || lightDiscrepancy !== 0;
 
     const audit: StudentAudit = {
-      student_id: currentStudent.id,
+      student_id: selectedStudent.id,
       collected_dark_garments: collectedDark,
       collected_light_garments: collectedLight,
       auditor_notes: notes,
-      has_discrepancy: hasDiscrepancy
+      has_discrepancy: hasDiscrepancy,
+      is_published: false
     };
 
-    setStudentAudits(new Map(studentAudits.set(currentStudent.id, audit)));
-
-    // Move to next student
-    if (currentStudentIndex < currentClass!.students.length - 1) {
-      setCurrentStudentIndex(currentStudentIndex + 1);
-    } else if (currentClassIndex < sessionData!.classes.length - 1) {
-      setCurrentClassIndex(currentClassIndex + 1);
-      setCurrentStudentIndex(0);
-    }
+    setStudentAudits(new Map(studentAudits.set(selectedStudent.id, audit)));
 
     toast({
-      title: hasDiscrepancy ? 'Discrepancy Found' : 'Student Audited',
-      description: hasDiscrepancy 
-        ? `${currentStudent.full_name} has garment count discrepancies`
-        : `${currentStudent.full_name} audit completed successfully`
+      title: 'Audit Saved',
+      description: `${selectedStudent.full_name} audit saved as draft`
     });
   };
 
-  const submitAuditReport = async () => {
-    if (!sessionData || studentAudits.size === 0) return;
+  const publishStudentAudit = async (
+    collectedDark: number,
+    collectedLight: number,
+    notes: string
+  ) => {
+    if (!selectedStudent) return;
+
+    const darkDiscrepancy = collectedDark - selectedStudent.total_dark_garment_count;
+    const lightDiscrepancy = collectedLight - selectedStudent.total_light_garment_count;
+    const hasDiscrepancy = darkDiscrepancy !== 0 || lightDiscrepancy !== 0;
+
+    const audit: StudentAudit = {
+      student_id: selectedStudent.id,
+      collected_dark_garments: collectedDark,
+      collected_light_garments: collectedLight,
+      auditor_notes: notes,
+      has_discrepancy: hasDiscrepancy,
+      is_published: true
+    };
+
+    setStudentAudits(new Map(studentAudits.set(selectedStudent.id, audit)));
+
+    // Update session data with audit status
+    if (sessionData && selectedClass) {
+      const updatedClasses = sessionData.classes.map(cls => {
+        if (cls.id === selectedClass.id) {
+          const updatedStudents = cls.students.map(student => {
+            if (student.id === selectedStudent.id) {
+              return { 
+                ...student, 
+                audit_status: hasDiscrepancy ? 'discrepancy' as const : 'matched' as const 
+              };
+            }
+            return student;
+          });
+          const auditedCount = updatedStudents.filter(s => s.audit_status !== 'not_audited').length;
+          return { ...cls, students: updatedStudents, audited_count: auditedCount };
+        }
+        return cls;
+      });
+      setSessionData({ ...sessionData, classes: updatedClasses });
+      setSelectedClass(prev => prev ? { ...prev, audited_count: prev.audited_count + (selectedStudent.audit_status === 'not_audited' ? 1 : 0) } : null);
+    }
+
+    // Create or update audit report
+    await createOrUpdateAuditReport(audit);
+
+    toast({
+      title: hasDiscrepancy ? 'Discrepancy Published' : 'Audit Published',
+      description: `${selectedStudent.full_name} audit sent to admin`
+    });
+
+    setCurrentView('class_detail');
+  };
+
+  const createOrUpdateAuditReport = async (audit: StudentAudit) => {
+    if (!sessionData || !selectedStudent) return;
 
     try {
-      const discrepancyStudents = Array.from(studentAudits.values()).filter(audit => audit.has_discrepancy);
-      
-      const { data: reportData, error: reportError } = await supabase
-        .from('audit_reports')
-        .insert({
-          session_id: sessionId,
-          auditor_id: auditorId,
-          auditor_user_id: (await supabase.auth.getUser()).data.user?.id,
-          school_id: sessionData.school_id,
-          report_details: {
-            school_name: sessionData.school_name,
-            auditor_id: auditorId,
+      const publishedAudits = Array.from(studentAudits.values()).filter(a => a.is_published);
+      const discrepancyStudents = publishedAudits.filter(a => a.has_discrepancy);
+
+      if (currentAuditReportId) {
+        // Update existing report
+        const { error: reportError } = await supabase
+          .from('audit_reports')
+          .update({
+            total_students_audited: publishedAudits.length,
+            students_with_discrepancies: discrepancyStudents.length,
+            discrepancies_found: discrepancyStudents.length > 0,
+            report_details: {
+              school_name: sessionData.school_name,
+              auditor_id: auditorId,
+              session_id: sessionId,
+              summary: `Audit in progress for ${sessionData.school_name}. ${discrepancyStudents.length} discrepancies found out of ${publishedAudits.length} students audited.`
+            }
+          })
+          .eq('id', currentAuditReportId);
+
+        if (reportError) throw reportError;
+      } else {
+        // Create new report
+        const { data: reportData, error: reportError } = await supabase
+          .from('audit_reports')
+          .insert({
             session_id: sessionId,
-            summary: `Audit completed for ${sessionData.school_name}. ${discrepancyStudents.length} discrepancies found out of ${studentAudits.size} students audited.`
-          },
-          discrepancies_found: discrepancyStudents.length > 0,
-          total_students_audited: studentAudits.size,
-          students_with_discrepancies: discrepancyStudents.length,
-          status: 'PENDING'
-        })
-        .select()
-        .single();
+            auditor_id: auditorId,
+            auditor_user_id: (await supabase.auth.getUser()).data.user?.id,
+            school_id: sessionData.school_id,
+            report_details: {
+              school_name: sessionData.school_name,
+              auditor_id: auditorId,
+              session_id: sessionId,
+              summary: `Audit started for ${sessionData.school_name}. ${discrepancyStudents.length} discrepancies found out of ${publishedAudits.length} students audited.`
+            },
+            discrepancies_found: discrepancyStudents.length > 0,
+            total_students_audited: publishedAudits.length,
+            students_with_discrepancies: discrepancyStudents.length,
+            status: 'PENDING'
+          })
+          .select()
+          .single();
 
-      if (reportError) throw reportError;
+        if (reportError) throw reportError;
+        setCurrentAuditReportId(reportData.id);
+      }
 
-      // Insert student audits
-      const studentAuditRecords = Array.from(studentAudits.entries()).map(([studentId, audit]) => {
-        const student = sessionData.classes
-          .flatMap(cls => cls.students)
-          .find(s => s.id === studentId)!;
-        
-        return {
-          audit_report_id: reportData.id,
-          student_id: studentId,
-          student_name: student.full_name,
-          class_name: student.class_name,
-          submitted_dark_garments: student.total_dark_garment_count,
-          submitted_light_garments: student.total_light_garment_count,
-          collected_dark_garments: audit.collected_dark_garments,
-          collected_light_garments: audit.collected_light_garments,
-          dark_garments_discrepancy: audit.collected_dark_garments - student.total_dark_garment_count,
-          light_garments_discrepancy: audit.collected_light_garments - student.total_light_garment_count,
-          has_discrepancy: audit.has_discrepancy,
-          auditor_notes: audit.auditor_notes
-        };
-      });
+      // Insert/update student audit record
+      const student = sessionData.classes
+        .flatMap(cls => cls.students)
+        .find(s => s.id === selectedStudent.id)!;
 
-      const { error: auditsError } = await supabase
+      const studentAuditRecord = {
+        audit_report_id: currentAuditReportId,
+        student_id: selectedStudent.id,
+        student_name: student.full_name,
+        class_name: student.class_name,
+        submitted_dark_garments: student.total_dark_garment_count,
+        submitted_light_garments: student.total_light_garment_count,
+        collected_dark_garments: audit.collected_dark_garments,
+        collected_light_garments: audit.collected_light_garments,
+        dark_garments_discrepancy: audit.collected_dark_garments - student.total_dark_garment_count,
+        light_garments_discrepancy: audit.collected_light_garments - student.total_light_garment_count,
+        has_discrepancy: audit.has_discrepancy,
+        auditor_notes: audit.auditor_notes
+      };
+
+      const { error: auditError } = await supabase
         .from('student_audits')
-        .insert(studentAuditRecords);
+        .upsert(studentAuditRecord, { onConflict: 'student_id,audit_report_id' });
 
-      if (auditsError) throw auditsError;
+      if (auditError) throw auditError;
 
-      toast({
-        title: 'Audit Report Submitted',
-        description: 'Report has been sent to admin for review'
-      });
-
-      // Reset state
-      setIsAuditing(false);
-      setSessionData(null);
-      setStudentAudits(new Map());
-      setSessionId('');
-      setAuditorId('');
-      
-      // Reload reports
-      loadAuditReports();
     } catch (error) {
-      console.error('Error submitting audit report:', error);
+      console.error('Error creating/updating audit report:', error);
       toast({
         title: 'Error',
-        description: 'Failed to submit audit report',
+        description: 'Failed to save audit record',
         variant: 'destructive'
       });
     }
   };
 
-  if (!isAuditing) {
+  const saveAndExitAudit = () => {
+    setCurrentView('search');
+    setSessionData(null);
+    setStudentAudits(new Map());
+    setSessionId('');
+    setAuditorId('');
+    setCurrentAuditReportId(null);
+    
+    toast({
+      title: 'Audit Session Saved',
+      description: 'Your progress has been saved. You can resume later.'
+    });
+    
+    loadAuditReports();
+  };
+
+  // Filter functions
+  const filteredClasses = sessionData?.classes.filter(cls => 
+    cls.name.toLowerCase().includes(classSearch.toLowerCase())
+  ) || [];
+
+  const filteredStudents = selectedClass?.students.filter(student =>
+    student.full_name.toLowerCase().includes(studentSearch.toLowerCase())
+  ) || [];
+
+  if (currentView === 'search') {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
@@ -325,7 +413,7 @@ export default function AuditingPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Recent Audit Reports
+                My Recent Audit Reports
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -342,7 +430,7 @@ export default function AuditingPage() {
                       <div>
                         <div className="font-medium">Session: {report.session_id}</div>
                         <div className="text-sm text-muted-foreground">
-                          {report.total_students_audited} students audited
+                          {report.total_students_audited} students audited • {new Date(report.created_at).toLocaleDateString()}
                         </div>
                       </div>
                       <Badge variant={report.students_with_discrepancies > 0 ? 'destructive' : 'default'}>
@@ -359,118 +447,240 @@ export default function AuditingPage() {
     );
   }
 
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Auditing Session: {sessionId}</h1>
-          <p className="text-muted-foreground">School: {sessionData?.school_name}</p>
-        </div>
-        <Button 
-          variant="outline" 
-          onClick={() => setIsAuditing(false)}
-        >
-          Exit Audit
-        </Button>
-      </div>
-
-      {/* Progress */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Audit Progress</span>
-              <span>{auditedStudents}/{totalStudents} students</span>
-            </div>
-            <Progress value={progress} className="h-2" />
+  if (currentView === 'classes') {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Audit: {sessionData?.school_name}</h1>
+            <p className="text-muted-foreground">Session: {sessionId} • Auditor: {auditorId}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={saveAndExitAudit}>
+              <Save className="h-4 w-4 mr-2" />
+              Save & Exit
+            </Button>
+          </div>
+        </div>
 
-      {currentStudent ? (
-        <AuditStudentForm 
-          student={currentStudent}
-          existingAudit={currentAudit}
-          onAudit={auditStudent}
-        />
-      ) : (
+        {/* Overall Progress */}
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-              <h3 className="text-xl font-semibold">Audit Complete!</h3>
-              <p className="text-muted-foreground">
-                All {totalStudents} students have been audited
-              </p>
-              <div className="flex gap-4 justify-center">
-                <Button onClick={submitAuditReport} className="flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                  Submit Report to Admin
-                </Button>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Overall Progress</span>
+                <span>{auditedStudents}/{totalStudents} students audited</span>
               </div>
+              <Progress value={progress} className="h-2" />
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Audit Summary */}
-      {studentAudits.size > 0 && (
+        {/* Class Search */}
         <Card>
           <CardHeader>
-            <CardTitle>Audit Summary</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Search Classes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Input
+              value={classSearch}
+              onChange={(e) => setClassSearch(e.target.value)}
+              placeholder="Search classes by name..."
+              className="mb-4"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Classes Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredClasses.map((cls) => (
+            <Card key={cls.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => {
+                    setSelectedClass(cls);
+                    setCurrentView('class_detail');
+                  }}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  {cls.name}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Progress</span>
+                    <span>{cls.audited_count}/{cls.total_count} students</span>
+                  </div>
+                  <Progress value={(cls.audited_count / cls.total_count) * 100} className="h-2" />
+                  <div className="flex gap-2 mt-3">
+                    <Badge variant="outline">
+                      {cls.total_count} total
+                    </Badge>
+                    <Badge variant="secondary">
+                      {cls.audited_count} audited
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (currentView === 'class_detail') {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" onClick={() => setCurrentView('classes')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Classes
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">{selectedClass?.name}</h1>
+              <p className="text-muted-foreground">{sessionData?.school_name} • Session: {sessionId}</p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={saveAndExitAudit}>
+            <Save className="h-4 w-4 mr-2" />
+            Save & Exit
+          </Button>
+        </div>
+
+        {/* Class Progress */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Class Progress</span>
+                <span>{selectedClass?.audited_count}/{selectedClass?.total_count} students audited</span>
+              </div>
+              <Progress value={selectedClass ? (selectedClass.audited_count / selectedClass.total_count) * 100 : 0} className="h-2" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Student Search */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Search Students
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Input
+              value={studentSearch}
+              onChange={(e) => setStudentSearch(e.target.value)}
+              placeholder="Search students by name..."
+            />
+          </CardContent>
+        </Card>
+
+        {/* Students List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Students</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Collected</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Student Name</TableHead>
+                  <TableHead>Submitted Garments</TableHead>
+                  <TableHead>Audit Status</TableHead>
+                  <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Array.from(studentAudits.entries()).map(([studentId, audit]) => {
-                  const student = sessionData?.classes
-                    .flatMap(cls => cls.students)
-                    .find(s => s.id === studentId);
-                  
-                  return (
-                    <TableRow key={studentId}>
-                      <TableCell>{student?.full_name}</TableCell>
-                      <TableCell>{student?.class_name}</TableCell>
-                      <TableCell>
-                        {student?.total_dark_garment_count}D / {student?.total_light_garment_count}L
-                      </TableCell>
-                      <TableCell>
-                        {audit.collected_dark_garments}D / {audit.collected_light_garments}L
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={audit.has_discrepancy ? 'destructive' : 'default'}>
-                          {audit.has_discrepancy ? 'Discrepancy' : 'Match'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {filteredStudents.map((student) => (
+                  <TableRow key={student.id}>
+                    <TableCell className="font-medium">{student.full_name}</TableCell>
+                    <TableCell>
+                      {student.total_dark_garment_count}D / {student.total_light_garment_count}L
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        student.audit_status === 'not_audited' ? 'outline' :
+                        student.audit_status === 'matched' ? 'default' : 'destructive'
+                      }>
+                        {student.audit_status === 'not_audited' ? 'Not Audited' :
+                         student.audit_status === 'matched' ? 'Matched' : 'Discrepancy'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button 
+                        size="sm" 
+                        onClick={() => {
+                          setSelectedStudent(student);
+                          setCurrentView('student_audit');
+                        }}
+                      >
+                        {student.audit_status === 'not_audited' ? 'Audit' : 'Re-audit'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
+
+  if (currentView === 'student_audit') {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" onClick={() => setCurrentView('class_detail')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to {selectedClass?.name}
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Auditing: {selectedStudent?.full_name}</h1>
+              <p className="text-muted-foreground">{selectedClass?.name} • {sessionData?.school_name}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={saveAndExitAudit}>
+              <Save className="h-4 w-4 mr-2" />
+              Save & Exit
+            </Button>
+          </div>
+        </div>
+
+        {selectedStudent && (
+          <AuditStudentForm 
+            student={selectedStudent}
+            existingAudit={studentAudits.get(selectedStudent.id) || null}
+            onSave={saveStudentAudit}
+            onPublish={publishStudentAudit}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function AuditStudentForm({ 
   student, 
   existingAudit, 
-  onAudit 
+  onSave,
+  onPublish 
 }: { 
   student: Student; 
   existingAudit: StudentAudit | null;
-  onAudit: (dark: number, light: number, notes: string) => void;
+  onSave: (dark: number, light: number, notes: string) => void;
+  onPublish: (dark: number, light: number, notes: string) => void;
 }) {
   const [collectedDark, setCollectedDark] = useState(existingAudit?.collected_dark_garments ?? student.total_dark_garment_count);
   const [collectedLight, setCollectedLight] = useState(existingAudit?.collected_light_garments ?? student.total_light_garment_count);
@@ -480,12 +690,12 @@ function AuditStudentForm({
   const lightDiscrepancy = collectedLight - student.total_light_garment_count;
   const hasDiscrepancy = darkDiscrepancy !== 0 || lightDiscrepancy !== 0;
 
-  const handleSubmit = () => {
-    onAudit(collectedDark, collectedLight, notes);
-    // Reset for next student
-    setCollectedDark(0);
-    setCollectedLight(0);
-    setNotes('');
+  const handleSave = () => {
+    onSave(collectedDark, collectedLight, notes);
+  };
+
+  const handlePublish = () => {
+    onPublish(collectedDark, collectedLight, notes);
   };
 
   return (
@@ -587,13 +797,24 @@ function AuditStudentForm({
           />
         </div>
 
-        <Button 
-          onClick={handleSubmit}
-          disabled={hasDiscrepancy && !notes.trim()}
-          className="w-full"
-        >
-          {hasDiscrepancy ? 'Record Discrepancy' : 'Confirm Audit'}
-        </Button>
+        <div className="flex gap-4">
+          <Button 
+            variant="outline"
+            onClick={handleSave}
+            className="flex-1"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save Draft
+          </Button>
+          <Button 
+            onClick={handlePublish}
+            disabled={hasDiscrepancy && !notes.trim()}
+            className="flex-1"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Publish to Admin
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
