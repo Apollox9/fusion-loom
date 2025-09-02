@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function AuthPage() {
   const [loading, setLoading] = useState(false);
@@ -199,6 +200,35 @@ export function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
+          
+          {/* Footer Links */}
+          <div className="mt-8 pt-6 border-t border-border/50 text-center">
+            <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
+              <Link 
+                to="/terms" 
+                className="hover:text-primary transition-colors underline-offset-4 hover:underline"
+              >
+                Terms & Conditions
+              </Link>
+              <span className="text-border">•</span>
+              <Link 
+                to="/privacy" 
+                className="hover:text-primary transition-colors underline-offset-4 hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              <span className="text-border">•</span>
+              <Link 
+                to="/help" 
+                className="hover:text-primary transition-colors underline-offset-4 hover:underline"
+              >
+                Help & Support
+              </Link>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground/70">
+              © 2025 Blaqlogic Digitals. All rights reserved.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -16,6 +16,9 @@ import StaffPage from "./pages/StaffPage";
 import AuditingPage from "./pages/AuditingPage";
 import ConversationsPage from "./pages/ConversationsPage";
 import NotFound from "./pages/NotFound";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import HelpSupport from "./pages/HelpSupport";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -116,6 +119,9 @@ const App = () => (
               <ConversationsPage />
             </ProtectedRoute>
           } />
+          <Route path="/terms" element={<TermsAndConditions />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/help" element={<HelpSupport />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
