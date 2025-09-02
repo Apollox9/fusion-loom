@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      /*
+        SPA GitHub Pages redirect script (c) 2016-2023 Rafael Pedicini, MIT License
+        https://github.com/rafgraph/spa-github-pages
+      */
+      (function(l) {
+        var redirect = sessionStorage.getItem('ghspa-redirect');
+        sessionStorage.removeItem('ghspa-redirect');
+        if (redirect) {
+          var location = JSON.parse(redirect);
+          history.replaceState(null, null, location.path + location.query + location.hash);
+        } else {
+          var pathSegmentsToKeep = 0; // change if deploying to a subfolder
+          var lPath = window.location.pathname.split('/');
+          var newUrl = window.location.protocol + '//' + window.location.host + '/' + lPath.slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' + lPath.slice(1 + pathSegmentsToKeep).join('/');
+          window.location.replace(newUrl + (window.location.search ? '&' : '?') + 'ghspa=1' + window.location.hash);
+        }
+      })(window.location);
+    </script>
+    <noscript>
+      <meta http-equiv="refresh" content="0; url=/" />
+    </noscript>
+  </head>
+  <body>
+    <p>Redirecting...</p>
+  </body>
+</html>
