@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Users, Plus, Edit, Trash2, Search, UserCheck, UserX, Award, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 // Staff type definitions
 interface BaseStaff {
@@ -53,12 +54,16 @@ export default function StaffPage() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { signUp } = useAuth();
 
   // Form state
   const [formData, setFormData] = useState({
     type: 'operator',
     fullName: '',
+    email: '',
+    password: '',
     businessName: '',
     region: '',
     country: ''
@@ -71,8 +76,9 @@ export default function StaffPage() {
     return `${prefix}${timestamp}${random}`;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
     if (!formData.fullName.trim()) {
       toast({
@@ -80,6 +86,17 @@ export default function StaffPage() {
         description: 'Full name is required',
         variant: 'destructive'
       });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!editingStaff && (!formData.email.trim() || !formData.password.trim())) {
+      toast({
+        title: 'Error',
+        description: 'Email and password are required for new staff members',
+        variant: 'destructive'
+      });
+      setIsSubmitting(false);
       return;
     }
 
@@ -145,21 +162,47 @@ export default function StaffPage() {
         title: 'Success',
         description: 'Staff member updated successfully'
       });
+      resetForm();
     } else {
-      setStaff(prev => [...prev, newStaff]);
-      toast({
-        title: 'Success',
-        description: 'Staff member added successfully'
-      });
+      // Create user account for new staff member
+      try {
+        const staffRole = formData.type.toUpperCase();
+        const { error } = await signUp(formData.email, formData.password, formData.fullName, staffRole);
+        
+        if (error) {
+          toast({
+            title: 'Error',
+            description: `Failed to create user account: ${error.message}`,
+            variant: 'destructive'
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        setStaff(prev => [...prev, newStaff]);
+        toast({
+          title: 'Success',
+          description: 'Staff member added and user account created successfully'
+        });
+        resetForm();
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: `Failed to create staff member: ${error.message}`,
+          variant: 'destructive'
+        });
+      }
     }
 
-    resetForm();
+    setIsSubmitting(false);
   };
 
   const resetForm = () => {
     setFormData({
       type: 'operator',
       fullName: '',
+      email: '',
+      password: '',
       businessName: '',
       region: '',
       country: ''
@@ -173,6 +216,8 @@ export default function StaffPage() {
     setFormData({
       type: staffMember.type,
       fullName: staffMember.fullName,
+      email: '', // Don't show existing email for security
+      password: '', // Don't show existing password for security
       businessName: staffMember.type === 'agent' ? staffMember.businessName : '',
       region: staffMember.type === 'agent' ? staffMember.region : '',
       country: staffMember.type === 'agent' ? staffMember.country : ''
@@ -281,6 +326,33 @@ export default function StaffPage() {
                   />
                 </div>
 
+                {!editingStaff && (
+                  <>
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="Enter email address"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                        placeholder="Enter password"
+                        minLength={6}
+                      />
+                    </div>
+                  </>
+                )}
+
                 {formData.type === 'agent' && (
                   <>
                     <div>
@@ -319,8 +391,12 @@ export default function StaffPage() {
                   <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
                     Cancel
                   </Button>
-                  <Button type="submit" className="flex-1 bg-gradient-to-r from-primary to-primary-glow">
-                    {editingStaff ? 'Update' : 'Add'} Staff
+                  <Button 
+                    type="submit" 
+                    className="flex-1 bg-gradient-to-r from-primary to-primary-glow"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Creating...' : editingStaff ? 'Update' : 'Add'} Staff
                   </Button>
                 </div>
               </form>
