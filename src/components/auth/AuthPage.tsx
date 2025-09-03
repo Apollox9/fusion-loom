@@ -236,33 +236,35 @@ export function AuthPage() {
         <div className="absolute bottom-20 right-10 w-80 h-80 bg-neon-accent/10 rounded-full blur-3xl animate-float" style={{animationDelay: '1s'}}></div>
       </div>
 
-      <Card className="w-full max-w-lg shadow-electric bg-gradient-card border-border/50 backdrop-blur-sm animate-scale-in relative z-10">
-        <CardHeader className="text-center pb-6">
+      <Card className={`w-full shadow-electric bg-gradient-card border-border/50 backdrop-blur-sm animate-scale-in relative z-10 ${
+        mode === 'register' ? 'max-w-2xl' : 'max-w-lg'
+      }`}>
+        <CardHeader className="text-center pb-4">
           <CardTitle className="text-3xl font-bold gradient-text mb-4">Project Fusion</CardTitle>
           <div className="w-16 h-1 bg-gradient-neon mx-auto mb-4 rounded-full"></div>
           <CardDescription className="text-lg text-muted-foreground">
             {mode === 'signin' ? 'Access your intelligent school management dashboard' : 'Register your school with Project Fusion'}
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-8 pb-8">
+        <CardContent className={`px-8 pb-6 ${mode === 'register' ? 'max-h-[80vh] overflow-y-auto' : ''}`}>
           {mode === 'register' && (
             <>
               {/* Step Indicators */}
-              <div className="flex items-center justify-center mb-8">
+              <div className="flex items-center justify-center mb-6">
                 <div className="flex items-center">
                   {[1, 2, 3].map((step, index) => (
                     <div key={step} className="flex items-center">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                         currentStep > step 
                           ? 'bg-primary text-primary-foreground' 
                           : currentStep === step 
                             ? 'bg-primary text-primary-foreground' 
                             : 'bg-muted text-muted-foreground'
                       }`}>
-                        {currentStep > step ? <Check className="w-5 h-5" /> : step}
+                        {currentStep > step ? <Check className="w-4 h-4" /> : step}
                       </div>
                       {index < 2 && (
-                        <div className={`w-16 h-1 mx-2 transition-all duration-300 ${
+                        <div className={`w-12 h-1 mx-2 transition-all duration-500 ${
                           currentStep > step + 1 ? 'bg-primary' : 'bg-muted'
                         }`}>
                           {currentStep === step + 1 && (
@@ -276,22 +278,22 @@ export function AuthPage() {
               </div>
 
               {/* Step Titles */}
-              <div className="text-center mb-6">
+              <div className="text-center mb-4">
                 {currentStep === 1 && (
                   <>
-                    <h3 className="text-xl font-semibold text-foreground">School Information</h3>
+                    <h3 className="text-lg font-semibold text-foreground">School Information</h3>
                     <p className="text-sm text-muted-foreground mt-1">Basic details about your institution</p>
                   </>
                 )}
                 {currentStep === 2 && (
                   <>
-                    <h3 className="text-xl font-semibold text-foreground">Contact Details</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Contact Details</h3>
                     <p className="text-sm text-muted-foreground mt-1">How we can reach you</p>
                   </>
                 )}
                 {currentStep === 3 && (
                   <>
-                    <h3 className="text-xl font-semibold text-foreground">Account Security</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Account Security</h3>
                     <p className="text-sm text-muted-foreground mt-1">Setup your login credentials</p>
                   </>
                 )}
@@ -367,11 +369,11 @@ export function AuthPage() {
               </div>
             </form>
           ) : (
-            <form onSubmit={handleRegister} className="space-y-6">
+            <form onSubmit={handleRegister} className="space-y-4">
               {/* Step 1: School Information */}
               {currentStep === 1 && (
                 <>
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Label htmlFor="school-name" className="text-sm font-semibold text-foreground">School Name</Label>
                     <Input
                       id="school-name"
@@ -379,12 +381,12 @@ export function AuthPage() {
                       value={registerForm.schoolName}
                       onChange={(e) => setRegisterForm({ ...registerForm, schoolName: e.target.value })}
                       required
-                      className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                      className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
                       placeholder="Enter your school name"
                     />
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Label htmlFor="headmaster-name" className="text-sm font-semibold text-foreground">Headmaster Name</Label>
                     <Input
                       id="headmaster-name"
@@ -392,16 +394,16 @@ export function AuthPage() {
                       value={registerForm.headmasterName}
                       onChange={(e) => setRegisterForm({ ...registerForm, headmasterName: e.target.value })}
                       required
-                      className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                      className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
                       placeholder="Enter headmaster's full name"
                     />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label htmlFor="school-type" className="text-sm font-semibold text-foreground">School Type</Label>
                       <Select value={registerForm.schoolType} onValueChange={(value) => setRegisterForm({ ...registerForm, schoolType: value })}>
-                        <SelectTrigger className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
+                        <SelectTrigger className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -414,10 +416,10 @@ export function AuthPage() {
                       </Select>
                     </div>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label htmlFor="student-count" className="text-sm font-semibold text-foreground">Student Count</Label>
                       <Select value={registerForm.studentCount} onValueChange={(value) => setRegisterForm({ ...registerForm, studentCount: value })}>
-                        <SelectTrigger className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
+                        <SelectTrigger className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
                           <SelectValue placeholder="Select range" />
                         </SelectTrigger>
                         <SelectContent>
@@ -435,7 +437,7 @@ export function AuthPage() {
               {/* Step 2: Contact Details */}
               {currentStep === 2 && (
                 <>
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-semibold text-foreground">Official Email Address</Label>
                     <Input
                       id="email"
@@ -443,12 +445,12 @@ export function AuthPage() {
                       value={registerForm.email}
                       onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
                       required
-                      className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                      className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
                       placeholder="school@example.edu"
                     />
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Label htmlFor="phone" className="text-sm font-semibold text-foreground">Phone Number</Label>
                     <Input
                       id="phone"
@@ -456,19 +458,19 @@ export function AuthPage() {
                       value={registerForm.phone}
                       onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
                       required
-                      className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                      className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
                       placeholder="+255 123 456 789"
                     />
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Label htmlFor="address" className="text-sm font-semibold text-foreground">School Address</Label>
                     <Textarea
                       id="address"
                       value={registerForm.address}
                       onChange={(e) => setRegisterForm({ ...registerForm, address: e.target.value })}
                       required
-                      className="min-h-[100px] bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                      className="min-h-[80px] bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
                       placeholder="Enter your school's full address"
                     />
                   </div>
@@ -478,7 +480,7 @@ export function AuthPage() {
               {/* Step 3: Account Security */}
               {currentStep === 3 && (
                 <>
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Label htmlFor="password" className="text-sm font-semibold text-foreground">Password</Label>
                     <div className="relative">
                       <Input
@@ -487,7 +489,7 @@ export function AuthPage() {
                         value={registerForm.password}
                         onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
                         required
-                        className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 pr-12"
+                        className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 pr-12"
                         placeholder="Enter a strong password"
                       />
                       <button
@@ -501,7 +503,7 @@ export function AuthPage() {
                     <p className="text-xs text-muted-foreground">Use at least 8 characters with a mix of letters, numbers, and symbols</p>
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Label htmlFor="confirm-password" className="text-sm font-semibold text-foreground">Confirm Password</Label>
                     <div className="relative">
                       <Input
@@ -510,7 +512,7 @@ export function AuthPage() {
                         value={registerForm.confirmPassword}
                         onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
                         required
-                        className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 pr-12"
+                        className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 pr-12"
                         placeholder="Confirm your password"
                       />
                       <button
@@ -526,7 +528,7 @@ export function AuthPage() {
                     )}
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="flex items-start space-x-3">
                       <Checkbox 
                         id="agree-terms" 
@@ -558,7 +560,7 @@ export function AuthPage() {
               )}
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between pt-4">
+              <div className="flex justify-between pt-3">
                 <Button
                   type="button"
                   variant="outline"
