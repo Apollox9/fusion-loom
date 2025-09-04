@@ -15,6 +15,10 @@ import MachinesPage from "./pages/MachinesPage";
 import StaffPage from "./pages/StaffPage";
 import AuditingPage from "./pages/AuditingPage";
 import ConversationsPage from "./pages/ConversationsPage";
+import FeaturesPage from "./pages/FeaturesPage";
+import DemoPage from "./pages/DemoPage";
+import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
 import NotFound from "./pages/NotFound";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -119,6 +123,10 @@ const App = () => (
               <ConversationsPage />
             </ProtectedRoute>
           } />
+          <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/demo" element={<DemoPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/help" element={<HelpSupport />} />
