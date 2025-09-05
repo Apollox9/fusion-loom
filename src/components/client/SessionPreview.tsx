@@ -129,6 +129,7 @@ export function SessionPreview({ data, onConfirm, onDiscard }: SessionPreviewPro
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>#</TableHead>
                     <TableHead>Full Name</TableHead>
                     <TableHead className="text-center">Dark Garments</TableHead>
                     <TableHead className="text-center">Light Garments</TableHead>
@@ -138,6 +139,11 @@ export function SessionPreview({ data, onConfirm, onDiscard }: SessionPreviewPro
                 <TableBody>
                   {selectedClassData.students.map((student, index) => (
                     <TableRow key={index}>
+                      <TableCell className="text-center">
+                        <span className="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold mx-auto">
+                          {index + 1}
+                        </span>
+                      </TableCell>
                       <TableCell className="font-medium">{student.fullName}</TableCell>
                       <TableCell className="text-center">{student.darkGarments}</TableCell>
                       <TableCell className="text-center">{student.lightGarments}</TableCell>

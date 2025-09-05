@@ -93,18 +93,33 @@ export function SessionUpload({ onComplete, onCancel, schoolName }: SessionUploa
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
         // Skip header row and process data
-        const students = jsonData.slice(1).map((row: any) => ({
-          fullName: row[0] || '',
-          darkGarments: parseInt(row[1]) || 0,
-          lightGarments: parseInt(row[2]) || 0,
-          paid: row[3] === true || row[3] === 'TRUE' || row[3] === 1 || row[3] === '✓' || row[3] === 'true'
-        })).filter(student => student.fullName.trim() && student.paid); // Only include paid students
+        const students = jsonData.slice(1).map((row: any) => {
+          const fullName = (row[0] || '').toString().trim();
+          const darkGarments = parseInt(row[1]) || 0;
+          const lightGarments = parseInt(row[2]) || 0;
+          const paidValue = row[3];
+
+          const paid = typeof paidValue === 'string'
+            ? ['✓', 'true', 'TRUE', '✔'].includes(paidValue.trim())
+            : paidValue === true || paidValue === 1;
+
+          return {
+            fullName,
+            darkGarments,
+            lightGarments,
+            paid
+          };
+        }).filter(student => student.fullName && student.paid)
+          .sort((a, b) => a.fullName.localeCompare(b.fullName)); // Sort alphabetically
 
         classesData.push({
           className,
           students
         });
       }
+
+      // Sort classes alphabetically
+      classesData.sort((a, b) => a.className.localeCompare(b.className));
 
       // Calculate totals
       const totalClasses = classesData.length;

@@ -76,12 +76,12 @@ const ContactPage = () => {
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/">
-                  <Button size="lg" className="px-8 py-4">
+                  <Button size="lg" className="px-8 py-4 bg-gradient-hero">
                     Back to Home
                   </Button>
                 </Link>
                 <Link to="/features">
-                  <Button variant="outline" size="lg" className="px-8 py-4">
+                  <Button variant="outline" size="lg" className="px-8 py-4 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
                     Explore Features
                   </Button>
                 </Link>
@@ -270,7 +270,7 @@ const ContactPage = () => {
                   <Button 
                     type="submit" 
                     size="lg" 
-                    className="w-full bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all duration-300"
+                    className="w-full bg-gradient-hero hover:shadow-lg transition-all duration-300"
                   >
                     <Send className="w-4 h-4 mr-2" />
                     Send Message
@@ -323,8 +323,8 @@ const ContactPage = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  No minimum orders required. Whether it's 1 uniform or 1000, 
-                  we handle orders of all sizes with the same quality and attention.
+                  Yes, our minimum order requirement is 20 garments per student and at least 50 students per school. 
+                  This ensures cost-effective production and quality service delivery.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -335,8 +335,10 @@ const ContactPage = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Students pay directly through our secure platform. Schools receive 
-                  their profit share monthly via bank transfer or mobile money.
+                  We accept payments through our designated accounts and mobile money services. 
+                  The headmaster or school administrator handles payment during session submission. 
+                  See our <Link to="/payment-methods" className="text-primary hover:underline">Payment Methods</Link> for 
+                  all supported payment options and account details.
                 </CardDescription>
               </CardContent>
             </Card>

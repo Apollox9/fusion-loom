@@ -19,6 +19,7 @@ import FeaturesPage from "./pages/FeaturesPage";
 import DemoPage from "./pages/DemoPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
+import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import NotFound from "./pages/NotFound";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -127,6 +128,7 @@ const App = () => (
           <Route path="/demo" element={<DemoPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/payment-methods" element={<PaymentMethodsPage />} />
           <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/help" element={<HelpSupport />} />

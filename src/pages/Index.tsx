@@ -51,8 +51,8 @@ const FeatureCard = ({
   animationDelay: `${delay}ms`
 }}>
     <CardHeader>
-      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center mb-4">
-        <Icon className="w-6 h-6 text-primary-foreground" />
+      <div className="w-12 h-12 rounded-lg bg-gradient-hero flex items-center justify-center mb-4">
+        <Icon className="w-6 h-6 text-white" />
       </div>
       <CardTitle className="text-xl font-display">{title}</CardTitle>
       <CardDescription className="text-muted-foreground">{description}</CardDescription>
@@ -76,7 +76,7 @@ const WorkflowStep = ({
   animationDelay: `${delay}ms`
 }}>
     <div className="relative mb-6">
-      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-bold text-xl animate-float">
+      <div className="w-16 h-16 rounded-full bg-gradient-hero flex items-center justify-center text-white font-bold text-xl animate-float">
         {number}
       </div>
       <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-background border-2 border-primary flex items-center justify-center">
@@ -101,8 +101,8 @@ const Index = () => {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <Printer className="w-6 h-6 text-primary-foreground" />
+              <div className="w-10 h-10 rounded-lg bg-gradient-hero flex items-center justify-center">
+                <Printer className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-bold font-display">PROJECT FUSION™</h1>
@@ -158,7 +158,7 @@ const Index = () => {
           animationDelay: '200ms'
         }}>
             <Link to="/auth?tab=register">
-              <Button size="lg" className="px-8 py-4 text-lg bg-gradient-to-r from-primary to-secondary hover:shadow-lg hover:scale-105 transition-all duration-300 animate-glow">
+              <Button size="lg" className="px-8 py-4 text-lg bg-gradient-hero hover:shadow-lg hover:scale-105 transition-all duration-300 animate-glow">
                 Join as a School
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
@@ -261,8 +261,8 @@ const Index = () => {
             animationDelay: `${index * 100}ms`
           }}>
                 <CardHeader>
-                  <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${tier.color} flex items-center justify-center mx-auto mb-4`}>
-                    <span className="text-primary-foreground font-bold text-lg">{tier.percentage}</span>
+                  <div className={`w-16 h-16 rounded-full ${tier.color === 'from-muted to-muted-foreground' ? 'bg-gradient-to-br from-muted to-muted-foreground' : 'bg-gradient-hero'} flex items-center justify-center mx-auto mb-4`}>
+                    <span className="text-white font-bold text-lg">{tier.percentage}</span>
                   </div>
                   <CardTitle className="text-xl font-display">{tier.range} Students</CardTitle>
                   <CardDescription>Profit percentage on each uniform printed</CardDescription>
@@ -306,8 +306,8 @@ const Index = () => {
             {/* Company Logo & About */}
             <div className="md:col-span-2">
               <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                  <Printer className="w-6 h-6 text-primary-foreground" />
+                <div className="w-10 h-10 rounded-lg bg-gradient-hero flex items-center justify-center">
+                  <Printer className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h3 className="font-bold font-display text-xl">PROJECT FUSION™</h3>
@@ -343,17 +343,29 @@ const Index = () => {
             <div>
               <h4 className="font-semibold mb-4">Follow Us</h4>
               <div className="flex space-x-4">
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary transition-colors">
-                  <span className="text-sm font-bold">f</span>
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" 
+                   className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
                 </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary transition-colors">
-                  <span className="text-sm font-bold">ig</span>
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" 
+                   className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center hover:from-purple-700 hover:to-pink-700 transition-all">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987 6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.611-3.197-1.559-.748-.948-1.074-2.284-.917-3.667.157-1.383.778-2.648 1.748-3.569.97-.92 2.267-1.429 3.661-1.429 1.394 0 2.691.509 3.661 1.429.97.921 1.591 2.186 1.748 3.569.157 1.383-.169 2.719-.917 3.667-.749.948-1.9 1.559-3.197 1.559-.648 0-1.273-.125-1.849-.349-.576-.225-1.087-.557-1.507-.98-.42-.423-.752-.934-.98-1.507-.228-.573-.353-1.198-.353-1.846 0-.648.125-1.273.353-1.846.228-.573.56-1.084.98-1.507.42-.423.931-.755 1.507-.98.576-.224 1.201-.349 1.849-.349z"/>
+                  </svg>
                 </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary transition-colors">
-                  <span className="text-sm font-bold">X</span>
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" 
+                   className="w-10 h-10 bg-black rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
                 </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary transition-colors">
-                  <span className="text-sm font-bold">yt</span>
+                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" 
+                   className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
                 </a>
               </div>
             </div>
