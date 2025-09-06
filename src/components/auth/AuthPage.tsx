@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { countries, formatPhoneNumber, getRegionsByCountry, getDistrictsByRegion } from '@/utils/countries';
 
 export function AuthPage() {
   const [loading, setLoading] = useState(false);
@@ -41,6 +42,9 @@ export function AuthPage() {
     email: '',
     phone: '',
     address: '',
+    country: '',
+    region: '',
+    district: '',
     
     // Step 3: Account Security
     password: '',
@@ -121,7 +125,8 @@ export function AuthPage() {
   };
 
   const isStep2Valid = () => {
-    return registerForm.email && registerForm.phone && registerForm.address;
+    return registerForm.email && registerForm.phone && registerForm.address && 
+           registerForm.country && registerForm.region && registerForm.district;
   };
 
   const isStep3Valid = () => {
@@ -240,7 +245,9 @@ export function AuthPage() {
         mode === 'register' ? 'max-w-2xl' : 'max-w-lg'
       }`}>
         <CardHeader className="text-center pb-4">
-          <CardTitle className="text-3xl font-bold gradient-text mb-4">Project Fusion</CardTitle>
+          <Link to="/">
+            <CardTitle className="text-3xl font-bold gradient-text mb-4 hover:text-primary transition-colors cursor-pointer">Project Fusion</CardTitle>
+          </Link>
           <div className="w-16 h-1 bg-gradient-neon mx-auto mb-4 rounded-full"></div>
           <CardDescription className="text-lg text-muted-foreground">
             {mode === 'signin' ? 'Access your intelligent school management dashboard' : 'Register your school with Project Fusion'}
@@ -375,28 +382,28 @@ export function AuthPage() {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="school-name" className="text-sm font-semibold text-foreground">School Name</Label>
-                    <Input
-                      id="school-name"
-                      type="text"
-                      value={registerForm.schoolName}
-                      onChange={(e) => setRegisterForm({ ...registerForm, schoolName: e.target.value })}
-                      required
-                      className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
-                      placeholder="Enter your school name"
-                    />
+                     <Input
+                       id="school-name"
+                       type="text"
+                       value={registerForm.schoolName}
+                       onChange={(e) => setRegisterForm({ ...registerForm, schoolName: e.target.value.toUpperCase() })}
+                       required
+                       className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                       placeholder="Enter your school name"
+                     />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="headmaster-name" className="text-sm font-semibold text-foreground">Headmaster Name</Label>
-                    <Input
-                      id="headmaster-name"
-                      type="text"
-                      value={registerForm.headmasterName}
-                      onChange={(e) => setRegisterForm({ ...registerForm, headmasterName: e.target.value })}
-                      required
-                      className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
-                      placeholder="Enter headmaster's full name"
-                    />
+                     <Input
+                       id="headmaster-name"
+                       type="text"
+                       value={registerForm.headmasterName}
+                       onChange={(e) => setRegisterForm({ ...registerForm, headmasterName: e.target.value.toUpperCase() })}
+                       required
+                       className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                       placeholder="Enter headmaster's full name"
+                     />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -450,18 +457,98 @@ export function AuthPage() {
                     />
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm font-semibold text-foreground">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={registerForm.phone}
-                      onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
-                      required
-                      className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
-                      placeholder="+255 123 456 789"
-                    />
-                  </div>
+                   <div className="grid grid-cols-3 gap-4">
+                     <div className="space-y-2">
+                       <Label htmlFor="country" className="text-sm font-semibold text-foreground">Country</Label>
+                       <Select 
+                         value={registerForm.country} 
+                         onValueChange={(value) => {
+                           const country = countries.find(c => c.code === value);
+                           setRegisterForm({ 
+                             ...registerForm, 
+                             country: value,
+                             region: '',
+                             district: '',
+                             phone: country ? country.phoneCode + ' ' : ''
+                           });
+                         }}
+                       >
+                         <SelectTrigger className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
+                           <SelectValue placeholder="Select country" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {countries.map((country) => (
+                             <SelectItem key={country.code} value={country.code}>
+                               {country.name}
+                             </SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                     </div>
+                     
+                     <div className="space-y-2">
+                       <Label htmlFor="region" className="text-sm font-semibold text-foreground">Region/State</Label>
+                       <Select 
+                         value={registerForm.region} 
+                         onValueChange={(value) => setRegisterForm({ ...registerForm, region: value, district: '' })}
+                         disabled={!registerForm.country}
+                       >
+                         <SelectTrigger className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
+                           <SelectValue placeholder="Select region" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {getRegionsByCountry(registerForm.country).map((region) => (
+                             <SelectItem key={region.name} value={region.name}>
+                               {region.name}
+                             </SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                     </div>
+                     
+                     <div className="space-y-2">
+                       <Label htmlFor="district" className="text-sm font-semibold text-foreground">District</Label>
+                       <Select 
+                         value={registerForm.district} 
+                         onValueChange={(value) => setRegisterForm({ ...registerForm, district: value })}
+                         disabled={!registerForm.region}
+                       >
+                         <SelectTrigger className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
+                           <SelectValue placeholder="Select district" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {getDistrictsByRegion(registerForm.country, registerForm.region).map((district) => (
+                             <SelectItem key={district} value={district}>
+                               {district}
+                             </SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                     </div>
+                   </div>
+                   
+                   <div className="space-y-2">
+                     <Label htmlFor="phone" className="text-sm font-semibold text-foreground">Phone Number</Label>
+                     <Input
+                       id="phone"
+                       type="tel"
+                       value={registerForm.phone}
+                       onChange={(e) => {
+                         const country = countries.find(c => c.code === registerForm.country);
+                         if (country) {
+                           const formatted = formatPhoneNumber(e.target.value, country.phoneFormat);
+                           if (formatted.length <= country.maxLength) {
+                             setRegisterForm({ ...registerForm, phone: formatted });
+                           }
+                         } else {
+                           setRegisterForm({ ...registerForm, phone: e.target.value });
+                         }
+                       }}
+                       required
+                       className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                       placeholder={registerForm.country ? countries.find(c => c.code === registerForm.country)?.phoneFormat || "+255 123 456 789" : "+255 123 456 789"}
+                     />
+                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="address" className="text-sm font-semibold text-foreground">School Address</Label>

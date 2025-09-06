@@ -432,19 +432,31 @@ export type Database = {
           audit_trail: Json | null
           auto_confirmed_at: string | null
           confirm_received_at: string | null
+          country: string | null
           created_at: string
           created_by_school: string
           created_by_user: string | null
           delivery: Json | null
+          district: string | null
           external_ref: string | null
+          headmaster_name: string | null
           id: string
           packaging: Json | null
+          payment_method: string | null
           pickup: Json | null
           printing: Json | null
           queued_at: string | null
+          receipt_image_url: string | null
+          receipt_number: string | null
+          region: string | null
+          school_name: string | null
+          session_data: Json | null
           status: Database["public"]["Enums"]["order_status"]
           submission_time: string | null
+          total_amount: number | null
+          total_dark_garments: number | null
           total_garments: number
+          total_light_garments: number | null
           updated_at: string
         }
         Insert: {
@@ -453,19 +465,31 @@ export type Database = {
           audit_trail?: Json | null
           auto_confirmed_at?: string | null
           confirm_received_at?: string | null
+          country?: string | null
           created_at?: string
           created_by_school: string
           created_by_user?: string | null
           delivery?: Json | null
+          district?: string | null
           external_ref?: string | null
+          headmaster_name?: string | null
           id?: string
           packaging?: Json | null
+          payment_method?: string | null
           pickup?: Json | null
           printing?: Json | null
           queued_at?: string | null
+          receipt_image_url?: string | null
+          receipt_number?: string | null
+          region?: string | null
+          school_name?: string | null
+          session_data?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           submission_time?: string | null
+          total_amount?: number | null
+          total_dark_garments?: number | null
           total_garments?: number
+          total_light_garments?: number | null
           updated_at?: string
         }
         Update: {
@@ -474,19 +498,31 @@ export type Database = {
           audit_trail?: Json | null
           auto_confirmed_at?: string | null
           confirm_received_at?: string | null
+          country?: string | null
           created_at?: string
           created_by_school?: string
           created_by_user?: string | null
           delivery?: Json | null
+          district?: string | null
           external_ref?: string | null
+          headmaster_name?: string | null
           id?: string
           packaging?: Json | null
+          payment_method?: string | null
           pickup?: Json | null
           printing?: Json | null
           queued_at?: string | null
+          receipt_image_url?: string | null
+          receipt_number?: string | null
+          region?: string | null
+          school_name?: string | null
+          session_data?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           submission_time?: string | null
+          total_amount?: number | null
+          total_dark_garments?: number | null
           total_garments?: number
+          total_light_garments?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -498,6 +534,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pending_orders: {
+        Row: {
+          country: string
+          created_at: string
+          district: string
+          expires_at: string
+          headmaster_name: string
+          id: string
+          last_verification_attempt: string | null
+          order_id: string
+          payment_method: string
+          payment_verified: boolean
+          receipt_image_url: string | null
+          receipt_number: string | null
+          region: string
+          school_id: string
+          school_name: string
+          session_data: Json
+          total_amount: number
+          total_dark_garments: number
+          total_light_garments: number
+          total_students: number
+          verification_attempts: number
+        }
+        Insert: {
+          country: string
+          created_at?: string
+          district: string
+          expires_at?: string
+          headmaster_name: string
+          id?: string
+          last_verification_attempt?: string | null
+          order_id: string
+          payment_method: string
+          payment_verified?: boolean
+          receipt_image_url?: string | null
+          receipt_number?: string | null
+          region: string
+          school_id: string
+          school_name: string
+          session_data: Json
+          total_amount?: number
+          total_dark_garments?: number
+          total_light_garments?: number
+          total_students?: number
+          verification_attempts?: number
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          district?: string
+          expires_at?: string
+          headmaster_name?: string
+          id?: string
+          last_verification_attempt?: string | null
+          order_id?: string
+          payment_method?: string
+          payment_verified?: boolean
+          receipt_image_url?: string | null
+          receipt_number?: string | null
+          region?: string
+          school_id?: string
+          school_name?: string
+          session_data?: Json
+          total_amount?: number
+          total_dark_garments?: number
+          total_light_garments?: number
+          total_students?: number
+          verification_attempts?: number
+        }
+        Relationships: []
       }
       print_events: {
         Row: {
@@ -529,28 +637,40 @@ export type Database = {
       profiles: {
         Row: {
           agent_id: string | null
+          country: string | null
           created_at: string
+          district: string | null
           full_name: string
           id: string
           last_seen_at: string | null
+          phone_number: string | null
+          region: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
         Insert: {
           agent_id?: string | null
+          country?: string | null
           created_at?: string
+          district?: string | null
           full_name: string
           id: string
           last_seen_at?: string | null
+          phone_number?: string | null
+          region?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Update: {
           agent_id?: string | null
+          country?: string | null
           created_at?: string
+          district?: string | null
           full_name?: string
           id?: string
           last_seen_at?: string | null
+          phone_number?: string | null
+          region?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -571,6 +691,7 @@ export type Database = {
           created_at: string
           district: string | null
           email: string | null
+          headmaster_name: string | null
           id: string
           is_served: boolean
           is_session_active: boolean
@@ -593,6 +714,7 @@ export type Database = {
           created_at?: string
           district?: string | null
           email?: string | null
+          headmaster_name?: string | null
           id?: string
           is_served?: boolean
           is_session_active?: boolean
@@ -615,6 +737,7 @@ export type Database = {
           created_at?: string
           district?: string | null
           email?: string | null
+          headmaster_name?: string | null
           id?: string
           is_served?: boolean
           is_session_active?: boolean
@@ -630,6 +753,45 @@ export type Database = {
           total_student_count?: number
           total_students_served_in_school?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      staff: {
+        Row: {
+          created_at: string
+          created_by_admin: string | null
+          email: string
+          full_name: string
+          id: string
+          phone_number: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          staff_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by_admin?: string | null
+          email: string
+          full_name: string
+          id?: string
+          phone_number?: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          staff_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by_admin?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone_number?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          staff_id?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
