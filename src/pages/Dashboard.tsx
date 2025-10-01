@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +25,7 @@ interface Profile {
 }
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState({
     schools: 0,

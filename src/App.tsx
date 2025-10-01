@@ -3,18 +3,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { Navbar } from "@/components/layout/Navbar";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
-import DashboardPage from "./pages/DashboardPage";
-import ClientPortalPage from "./pages/ClientPortalPage";
-import SchoolsPage from "./pages/SchoolsPage";
-import OrdersPage from "./pages/OrdersPage";
-import MachinesPage from "./pages/MachinesPage";
-import StaffPage from "./pages/StaffPage";
-import AuditingPage from "./pages/AuditingPage";
-import ConversationsPage from "./pages/ConversationsPage";
+import SchoolDashboard from "./pages/school/SchoolDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AuditorDashboard from "./pages/auditor/AuditorDashboard";
 import FeaturesPage from "./pages/FeaturesPage";
 import DemoPage from "./pages/DemoPage";
 import AboutPage from "./pages/AboutPage";
@@ -24,52 +19,8 @@ import NotFound from "./pages/NotFound";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import HelpSupport from "./pages/HelpSupport";
-import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
-
-// Protected Route Component
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  return (
-    <>
-      <Navbar />
-      {children}
-    </>
-  );
-}
-
-// Public Route Component (for auth page)
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -77,63 +28,45 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={
-            <PublicRoute>
-              <AuthPage />
-            </PublicRoute>
-          } />
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/client-portal" element={
-            <ProtectedRoute>
-              <ClientPortalPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/schools" element={
-            <ProtectedRoute>
-              <SchoolsPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/orders" element={
-            <ProtectedRoute>
-              <OrdersPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/machines" element={
-            <ProtectedRoute>
-              <MachinesPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/staff" element={
-            <ProtectedRoute>
-              <StaffPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/auditing" element={
-            <ProtectedRoute>
-              <AuditingPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/conversations" element={
-            <ProtectedRoute>
-              <ConversationsPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/features" element={<FeaturesPage />} />
-          <Route path="/demo" element={<DemoPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/payment-methods" element={<PaymentMethodsPage />} />
-          <Route path="/terms" element={<TermsAndConditions />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/help" element={<HelpSupport />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/demo" element={<DemoPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/payment-methods" element={<PaymentMethodsPage />} />
+            <Route path="/terms" element={<TermsAndConditions />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/help" element={<HelpSupport />} />
+
+            {/* School Portal */}
+            <Route path="/school/*" element={
+              <ProtectedRoute allowedRoles={['SCHOOL_USER']}>
+                <SchoolDashboard />
+              </ProtectedRoute>
+            } />
+
+            {/* Auditor Portal */}
+            <Route path="/auditor/*" element={
+              <ProtectedRoute allowedRoles={['OPERATOR', 'SUPERVISOR']}>
+                <AuditorDashboard />
+              </ProtectedRoute>
+            } />
+
+            {/* Admin Portal */}
+            <Route path="/admin/*" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+
+            {/* 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
