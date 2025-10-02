@@ -33,6 +33,10 @@ export const formatTZS = (amount: number): string => {
   return `TZS ${amount.toLocaleString('en-US')}`;
 };
 
+export const formatCurrency = (amount: number): string => {
+  return formatTZS(amount);
+};
+
 export const calculateProfitByTier = (studentCount: number, totalAmount: number): number => {
   let profitPercentage = 0;
   

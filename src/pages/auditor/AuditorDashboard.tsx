@@ -1,102 +1,130 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useNavigate } from 'react-router-dom';
+import { useRoleBasedAuth } from '@/hooks/useRoleBasedAuth';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
 import { 
-  Search, 
-  FileText, 
+  ClipboardCheck, 
   Clock, 
   CheckCircle, 
   AlertCircle,
-  User,
-  Calendar,
-  LogOut
+  Search,
+  FileText,
+  TrendingUp
 } from 'lucide-react';
-import { useRoleBasedAuth } from '@/hooks/useRoleBasedAuth';
-import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 
 export default function AuditorDashboard() {
+  const navigate = useNavigate();
+  const { profile, loading } = useRoleBasedAuth();
+  const { signOut } = useAuth();
+  
   const [auditorId, setAuditorId] = useState('');
   const [sessionId, setSessionId] = useState('');
-  const [recentAudits, setRecentAudits] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const { profile } = useRoleBasedAuth();
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
+  const [recentAudits, setRecentAudits] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalAudits: 0,
+    completedAudits: 0,
+    inProgressAudits: 0,
+    discrepanciesFound: 0
+  });
 
   useEffect(() => {
     if (profile) {
-      fetchRecentAudits();
+      fetchAuditorData();
     }
   }, [profile]);
 
-  const fetchRecentAudits = async () => {
+  const fetchAuditorData = async () => {
     try {
-      // TODO: Will work after database types regenerate
-      // const { data } = await supabase
-      //   .from('audit_sessions')
-      //   .select('*')
-      //   .eq('auditor_user_id', profile?.id)
-      //   .order('created_at', { ascending: false })
-      //   .limit(10);
+      // Fetch auditor's recent audit reports
+      const { data: auditsData, error } = await supabase
+        .from('audit_reports')
+        .select('*')
+        .eq('auditor_user_id', profile?.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-      setRecentAudits([]);
+      if (error) throw error;
+
+      setRecentAudits(auditsData || []);
+
+      // Calculate stats
+      const total = auditsData?.length || 0;
+      const completed = auditsData?.filter(a => a.status === 'COMPLETED').length || 0;
+      const inProgress = auditsData?.filter(a => a.status === 'IN_PROGRESS').length || 0;
+      const withDiscrepancies = auditsData?.filter(a => a.discrepancies_found).length || 0;
+
+      setStats({
+        totalAudits: total,
+        completedAudits: completed,
+        inProgressAudits: inProgress,
+        discrepanciesFound: withDiscrepancies
+      });
     } catch (error) {
-      console.error('Error fetching recent audits:', error);
+      console.error('Error fetching auditor data:', error);
     }
   };
 
   const handleStartAudit = async () => {
     if (!auditorId || !sessionId) {
-      alert('Please enter both Auditor ID and Session ID');
+      toast.error('Please enter both Auditor ID and Session ID');
       return;
     }
 
-    setLoading(true);
-
     try {
-      // Check if session exists in orders table
-      const { data: order } = await supabase
+      // Check if session exists in orders
+      const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .select('*')
         .eq('external_ref', sessionId)
         .single();
 
-      if (!order) {
-        alert('Session not found. Please check the Session ID.');
-        setLoading(false);
+      if (orderError || !orderData) {
+        toast.error('Session ID not found');
         return;
       }
 
-      // Create or update audit session
-      // TODO: Will work after database types regenerate
-      alert('Audit session feature will be available after database sync completes.');
-      
-      // const { data: auditSession } = await supabase
-      //   .from('audit_sessions')
-      //   .upsert({
-      //     session_id: sessionId,
-      //     auditor_id: auditorId,
-      //     auditor_user_id: profile?.id,
-      //     order_id: order.id,
-      //     status: 'IN_PROGRESS'
-      //   })
-      //   .select()
-      //   .single();
+      // Create or get audit report
+      const { data: existingAudit } = await supabase
+        .from('audit_reports')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('auditor_user_id', profile?.id)
+        .maybeSingle();
 
-      // if (auditSession) {
-      //   navigate(`/auditor/audit/${auditSession.id}`);
-      // }
-    } catch (error) {
+      if (existingAudit) {
+        // Navigate to existing audit
+        navigate(`/auditor/audit/${existingAudit.id}`);
+      } else {
+        // Create new audit report
+        const { data: newAudit, error: auditError } = await supabase
+          .from('audit_reports')
+          .insert({
+            session_id: sessionId,
+            auditor_id: auditorId,
+            auditor_user_id: profile?.id,
+            school_id: orderData.created_by_school,
+            status: 'IN_PROGRESS'
+          })
+          .select()
+          .single();
+
+        if (auditError) throw auditError;
+
+        toast.success('Audit session started');
+        navigate(`/auditor/audit/${newAudit.id}`);
+      }
+    } catch (error: any) {
       console.error('Error starting audit:', error);
-      alert('Error starting audit. Please try again.');
+      toast.error(error.message || 'Failed to start audit session');
     }
-
-    setLoading(false);
   };
 
   const handleSignOut = async () => {
@@ -105,65 +133,119 @@ export default function AuditorDashboard() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      'IN_PROGRESS': { color: "bg-yellow-100 text-yellow-800", icon: Clock },
-      'COMPLETED': { color: "bg-green-100 text-green-800", icon: CheckCircle },
-      'PAUSED': { color: "bg-blue-100 text-blue-800", icon: AlertCircle }
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig];
-    const Icon = config?.icon || Clock;
-    
-    return (
-      <Badge className={`${config?.color || 'bg-gray-100 text-gray-800'} flex items-center space-x-1`}>
-        <Icon className="w-3 h-3" />
-        <span className="capitalize">{status.toLowerCase().replace('_', ' ')}</span>
-      </Badge>
-    );
+    switch (status) {
+      case 'IN_PROGRESS':
+        return (
+          <Badge variant="secondary" className="gap-1">
+            <Clock className="h-3 w-3" />
+            In Progress
+          </Badge>
+        );
+      case 'COMPLETED':
+        return (
+          <Badge variant="default" className="gap-1">
+            <CheckCircle className="h-3 w-3" />
+            Completed
+          </Badge>
+        );
+      case 'PAUSED':
+        return (
+          <Badge variant="outline" className="gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Paused
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-accent/5 to-background p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 animate-fade-in">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold font-display bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                Auditor Dashboard
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Welcome back, {profile?.full_name}
-              </p>
+              <h1 className="text-2xl font-bold text-foreground">Auditor Dashboard</h1>
+              <p className="text-sm text-muted-foreground">Welcome back, {profile?.full_name}</p>
             </div>
-            <Button 
-              variant="outline"
-              onClick={handleSignOut}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
+            <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
           </div>
         </div>
+      </header>
 
-        {/* Start New Audit Section */}
-        <Card className="mb-8 animate-fade-in-up">
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="grid gap-4 md:grid-cols-4 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Audits</CardTitle>
+              <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalAudits}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.completedAudits}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.inProgressAudits}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Discrepancies</CardTitle>
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.discrepanciesFound}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Start New Audit */}
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Search className="w-5 h-5" />
-              <span>Start New Audit Session</span>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Start New Audit Session
             </CardTitle>
-            <CardDescription>
-              Enter your Auditor ID and Session ID to begin a new audit
-            </CardDescription>
+            <CardDescription>Enter your auditor ID and the session ID to begin auditing</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="auditor-id">Auditor ID</Label>
                 <Input
                   id="auditor-id"
-                  placeholder="Enter your Auditor ID"
+                  placeholder="e.g., AUD1234567"
                   value={auditorId}
                   onChange={(e) => setAuditorId(e.target.value)}
                 />
@@ -172,85 +254,68 @@ export default function AuditorDashboard() {
                 <Label htmlFor="session-id">Session ID</Label>
                 <Input
                   id="session-id"
-                  placeholder="Enter Session ID"
+                  placeholder="e.g., SESSION-12345"
                   value={sessionId}
                   onChange={(e) => setSessionId(e.target.value)}
                 />
               </div>
-              <div className="flex items-end">
-                <Button 
-                  onClick={handleStartAudit}
-                  disabled={loading || !auditorId || !sessionId}
-                  className="w-full bg-gradient-to-r from-primary to-blue-600"
-                >
-                  {loading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  ) : (
-                    <FileText className="w-4 h-4 mr-2" />
-                  )}
-                  Start Audit
-                </Button>
-              </div>
             </div>
+            <Button onClick={handleStartAudit} className="w-full md:w-auto">
+              Start Audit Session
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Recent Audit Reports */}
-        <Card className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+        {/* Recent Audits */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className="w-5 h-5" />
-              <span>My Recent Audit Reports</span>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              My Recent Audit Reports
             </CardTitle>
-            <CardDescription>
-              View and continue your previous audit sessions
-            </CardDescription>
+            <CardDescription>View your audit history and status</CardDescription>
           </CardHeader>
           <CardContent>
-            {recentAudits.length > 0 ? (
+            {recentAudits.length === 0 ? (
+              <div className="text-center py-12">
+                <ClipboardCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No audit reports yet</p>
+                <p className="text-sm text-muted-foreground">Start your first audit session above</p>
+              </div>
+            ) : (
               <div className="space-y-4">
-                {recentAudits.map((audit: any) => (
-                  <div 
-                    key={audit.id} 
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                {recentAudits.map((audit) => (
+                  <div
+                    key={audit.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/auditor/audit/${audit.id}`)}
                   >
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
                         <p className="font-medium">Session: {audit.session_id}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Auditor: {audit.auditor_id}
-                        </p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Calendar className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(audit.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
+                        {getStatusBadge(audit.status)}
                       </div>
+                      <p className="text-sm text-muted-foreground">
+                        Auditor: {audit.auditor_id} • {new Date(audit.created_at).toLocaleDateString()}
+                      </p>
+                      {audit.discrepancies_found && (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Discrepancies found: {audit.students_with_discrepancies} students
+                        </p>
+                      )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {getStatusBadge(audit.status)}
-                      <Button variant="outline" size="sm">
-                        {audit.status === 'COMPLETED' ? 'View' : 'Continue'}
-                      </Button>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{audit.total_students_audited} students</p>
+                      <p className="text-xs text-muted-foreground">audited</p>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No audit reports yet</p>
-                <p className="text-sm">Start your first audit session above</p>
-              </div>
             )}
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }

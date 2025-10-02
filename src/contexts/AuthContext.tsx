@@ -56,12 +56,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       setProfile(data);
       
-      // Role-based redirect after login
-      if (data && window.location.pathname === '/auth') {
+      // Role-based redirect after login - check if on auth page or root
+      if (data && (window.location.pathname === '/auth' || window.location.pathname === '/')) {
         redirectBasedOnRole(data.role);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setProfile(null);
     } finally {
       setLoading(false);
     }
