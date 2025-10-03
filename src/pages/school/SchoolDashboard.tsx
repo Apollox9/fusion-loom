@@ -92,12 +92,45 @@ export default function SchoolDashboard() {
 
   const fetchSessions = async () => {
     try {
-      const { data } = await supabase
+      // Fetch from both pending_orders and orders
+      const { data: pendingData } = await supabase
+        .from('pending_orders')
+        .select('*')
+        .eq('school_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
         .eq('created_by_user', user?.id)
         .order('created_at', { ascending: false });
-      if (data) setSessions(data);
+
+      // Combine and map pending orders to have status 'PENDING'
+      const pending = (pendingData || []).map(p => ({
+        ...p,
+        status: 'PENDING',
+        id: p.id,
+        external_ref: p.order_id
+      }));
+
+      const all = [...pending, ...(ordersData || [])];
+      setSessions(all);
+
+      // Calculate stats from actual data
+      const totalStudents = all.reduce((sum, s: any) => sum + (s.total_students || 0), 0);
+      const totalGarments = all.reduce((sum, s: any) => sum + ((s.total_dark_garments || 0) + (s.total_light_garments || 0)), 0);
+      const totalAmount = all.reduce((sum, s: any) => sum + (Number(s.total_amount) || 0), 0);
+      const completed = all.filter((s: any) => s.status === 'COMPLETED').length;
+      const inProgress = all.filter((s: any) => s.status === 'IN_PROGRESS').length;
+
+      setStats({
+        submittedStudents: totalStudents,
+        totalStudents: totalStudents,
+        verifiedGarments: totalGarments,
+        inPrinting: inProgress,
+        completed: completed,
+        projectedProfit: totalAmount
+      });
     } catch (error) {
       console.error('Error fetching sessions:', error);
     }

@@ -175,36 +175,51 @@ export default function AdminDashboard() {
         const pendingOrder = pendingOrders.find(o => o.id === orderId);
         if (!pendingOrder) return;
 
-        // Create actual order from pending order
+        // Create actual order from pending order with QUEUED status
         const { error: orderError } = await supabase
           .from('orders')
           .insert({
-            ...pendingOrder,
-            status: 'SUBMITTED',
-            submission_time: new Date().toISOString()
+            created_by_school: pendingOrder.school_id,
+            created_by_user: pendingOrder.school_id,
+            school_name: pendingOrder.school_name,
+            headmaster_name: pendingOrder.headmaster_name,
+            country: pendingOrder.country,
+            region: pendingOrder.region,
+            district: pendingOrder.district,
+            external_ref: pendingOrder.order_id,
+            total_garments: pendingOrder.total_dark_garments + pendingOrder.total_light_garments,
+            total_dark_garments: pendingOrder.total_dark_garments,
+            total_light_garments: pendingOrder.total_light_garments,
+            total_amount: pendingOrder.total_amount,
+            payment_method: pendingOrder.payment_method,
+            receipt_number: pendingOrder.receipt_number,
+            receipt_image_url: pendingOrder.receipt_image_url,
+            session_data: pendingOrder.session_data,
+            status: 'QUEUED',
+            submission_time: new Date().toISOString(),
+            queued_at: new Date().toISOString()
           });
 
         if (orderError) throw orderError;
-      }
 
-      // Update or delete pending order
-      if (verify) {
+        // Delete from pending_orders
         await supabase
           .from('pending_orders')
-          .update({ payment_verified: true })
+          .delete()
           .eq('id', orderId);
       } else {
+        // Just delete if rejected
         await supabase
           .from('pending_orders')
           .delete()
           .eq('id', orderId);
       }
 
-      toast.success(verify ? 'Payment verified and order created' : 'Payment rejected');
+      toast.success(verify ? 'Payment verified! Order moved to queue.' : 'Payment rejected and order deleted.');
       fetchDashboardData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying payment:', error);
-      toast.error('Failed to process payment verification');
+      toast.error(error.message || 'Failed to process payment verification');
     }
   };
 

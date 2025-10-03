@@ -15,10 +15,23 @@ import {
   Hash
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { calculateStudentPrice, calculateSessionTotal } from '@/utils/pricing';
 
 interface PaymentSubmissionProps {
   sessionData: {
     schoolName: string;
+    schoolId?: string;
+    classes: Array<{
+      className: string;
+      students: Array<{
+        studentName: string;
+        darkCount: number;
+        lightCount: number;
+        isPaid: boolean;
+      }>;
+    }>;
     totals: {
       totalStudents: number;
       totalDarkGarments: number;
@@ -36,9 +49,19 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { user, profile } = useAuthContext();
 
+  // Calculate total cost using the pricing utility
+  const studentsWithPricing = sessionData.classes.flatMap(cls => 
+    cls.students.map(student => ({
+      ...student,
+      totalGarments: student.darkCount + student.lightCount,
+      price: calculateStudentPrice(student.darkCount + student.lightCount)
+    }))
+  );
+  
+  const totalAmount = studentsWithPricing.reduce((sum, student) => sum + student.price, 0);
   const totalGarments = sessionData.totals.totalDarkGarments + sessionData.totals.totalLightGarments;
-  const estimatedCost = totalGarments * 2.5; // Example: $2.50 per garment
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,11 +101,94 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
 
     setIsSubmitting(true);
     
-    // Simulate submission delay
-    setTimeout(() => {
+    try {
+      // Get school data
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (!schoolData && !profile) {
+        throw new Error('School or profile data not found');
+      }
+
+      // Generate unique order ID
+      const orderId = `ORD-${Date.now()}`;
+
+      // Insert into pending_orders
+      const { data: pendingOrder, error: pendingError } = await supabase
+        .from('pending_orders')
+        .insert({
+          order_id: orderId,
+          school_id: schoolData?.id || user?.id,
+          school_name: sessionData.schoolName || schoolData?.name || profile?.full_name,
+          headmaster_name: schoolData?.headmaster_name || profile?.full_name,
+          country: schoolData?.country || profile?.country || 'Tanzania',
+          region: schoolData?.region || profile?.region || '',
+          district: schoolData?.district || profile?.district || '',
+          total_students: sessionData.totals.totalStudents,
+          total_dark_garments: sessionData.totals.totalDarkGarments,
+          total_light_garments: sessionData.totals.totalLightGarments,
+          total_amount: totalAmount,
+          payment_method: paymentMethod === 'receipt_number' ? 'Receipt Number' : 'Receipt Upload',
+          receipt_number: paymentMethod === 'receipt_number' ? receiptNumber : null,
+          receipt_image_url: null, // TODO: Upload file to storage if needed
+          session_data: sessionData,
+          payment_verified: false
+        })
+        .select()
+        .single();
+
+      if (pendingError) throw pendingError;
+
+      // Insert classes and students
+      for (const classData of sessionData.classes) {
+        const { data: classRecord, error: classError } = await supabase
+          .from('classes')
+          .insert({
+            school_id: schoolData?.id || user?.id,
+            name: classData.className,
+            total_students_served_in_class: classData.students.length
+          })
+          .select()
+          .single();
+
+        if (classError) throw classError;
+
+        // Insert students for this class
+        const studentsToInsert = classData.students.map(student => ({
+          school_id: schoolData?.id || user?.id,
+          class_id: classRecord.id,
+          full_name: student.studentName,
+          total_dark_garment_count: student.darkCount,
+          total_light_garment_count: student.lightCount,
+          is_served: false
+        }));
+
+        const { error: studentsError } = await supabase
+          .from('students')
+          .insert(studentsToInsert);
+
+        if (studentsError) throw studentsError;
+      }
+
+      toast({
+        title: 'Order Submitted Successfully',
+        description: `Order ${orderId} is pending admin verification`
+      });
+
       setIsSubmitting(false);
       onSubmit();
-    }, 2000);
+    } catch (error: any) {
+      console.error('Error submitting order:', error);
+      toast({
+        title: 'Submission Failed',
+        description: error.message || 'Failed to submit order',
+        variant: 'destructive'
+      });
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitting) {
@@ -164,8 +270,8 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
                       <span>{totalGarments}</span>
                     </div>
                     <div className="flex items-center justify-between text-xl font-bold text-primary mt-2">
-                      <span>Estimated Cost</span>
-                      <span>${estimatedCost.toFixed(2)}</span>
+                      <span>Total Amount</span>
+                      <span>TZS {totalAmount.toLocaleString('en-US')}</span>
                     </div>
                   </div>
                 </div>
