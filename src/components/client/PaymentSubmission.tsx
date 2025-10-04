@@ -52,16 +52,14 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
   const { user, profile } = useAuthContext();
 
   // Calculate total cost using the pricing utility
-  const studentsWithPricing = sessionData.classes.flatMap(cls => 
-    cls.students.map(student => ({
-      ...student,
-      totalGarments: student.darkCount + student.lightCount,
-      price: calculateStudentPrice(student.darkCount + student.lightCount)
-    }))
-  );
+  const studentsData = sessionData.classes?.flatMap((cls: any) => 
+    cls.students?.map((student: any) => ({
+      totalGarments: (student.darkCount || 0) + (student.lightCount || 0)
+    })) || []
+  ) || [];
   
-  const totalAmount = studentsWithPricing.reduce((sum, student) => sum + student.price, 0);
-  const totalGarments = sessionData.totals.totalDarkGarments + sessionData.totals.totalLightGarments;
+  const totalAmount = calculateSessionTotal(studentsData);
+  const totalGarments = (sessionData.totals?.totalDarkGarments || 0) + (sessionData.totals?.totalLightGarments || 0);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

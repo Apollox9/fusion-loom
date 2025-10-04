@@ -27,6 +27,7 @@ import { PaymentSubmission } from '@/components/client/PaymentSubmission';
 import { formatTZS, calculateProfitByTier, getProfitTier } from '@/utils/pricing';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import { SchoolSettings } from '@/components/client/SchoolSettings';
 
 const AnimatedCounter = ({ end, duration = 2000, prefix = "", suffix = "" }: { 
   end: number; 
@@ -382,17 +383,7 @@ export default function SchoolDashboard() {
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>School Settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div><Label>School Name</Label><p className="text-muted-foreground">{schoolData?.name || 'Not set'}</p></div>
-                  <div><Label>Headmaster</Label><p className="text-muted-foreground">{profile?.full_name}</p></div>
-                </div>
-              </CardContent>
-            </Card>
+            <SchoolSettings />
           </TabsContent>
         </Tabs>
       </div>
