@@ -54,7 +54,7 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
   // Calculate total cost using the pricing utility
   const studentsData = sessionData.classes?.flatMap((cls: any) => 
     cls.students?.map((student: any) => ({
-      totalGarments: (student.darkCount || 0) + (student.lightCount || 0)
+      totalGarments: (student.darkGarments || 0) + (student.lightGarments || 0)
     })) || []
   ) || [];
   
@@ -155,12 +155,12 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
         if (classError) throw classError;
 
         // Insert students for this class
-        const studentsToInsert = classData.students.map(student => ({
+        const studentsToInsert = classData.students.map((student: any) => ({
           school_id: schoolData?.id || user?.id,
           class_id: classRecord.id,
-          full_name: student.studentName,
-          total_dark_garment_count: student.darkCount,
-          total_light_garment_count: student.lightCount,
+          full_name: student.fullName || student.studentName,
+          total_dark_garment_count: student.darkGarments || student.darkCount || 0,
+          total_light_garment_count: student.lightGarments || student.lightCount || 0,
           is_served: false
         }));
 

@@ -24,10 +24,12 @@ import {
   Edit,
   Trash2,
   UserPlus,
-  Database
+  Database,
+  Eye
 } from 'lucide-react';
 import { generateStaffId } from '@/utils/staffIdGenerator';
 import { formatCurrency } from '@/utils/pricing';
+import { OrderPreviewDialog } from '@/components/admin/OrderPreviewDialog';
 
 export default function AdminDashboard() {
   const { user, profile, signOut } = useAuthContext();
@@ -50,6 +52,8 @@ export default function AdminDashboard() {
   // State for orders
   const [orders, setOrders] = useState<any[]>([]);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+  const [previewOrder, setPreviewOrder] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // State for staff
   const [staff, setStaff] = useState<any[]>([]);
@@ -348,7 +352,7 @@ export default function AdminDashboard() {
                         <TableHead>Amount</TableHead>
                         <TableHead>Payment Method</TableHead>
                         <TableHead>Receipt</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -359,14 +363,21 @@ export default function AdminDashboard() {
                           <TableCell>{formatCurrency(order.total_amount)}</TableCell>
                           <TableCell><Badge variant="outline">{order.payment_method}</Badge></TableCell>
                           <TableCell>
-                            {order.receipt_image_url && (
-                              <a href={order.receipt_image_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                View Receipt
-                              </a>
-                            )}
+                            {order.receipt_number || '-'}
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 justify-end">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  setPreviewOrder(order);
+                                  setShowPreview(true);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Preview
+                              </Button>
                               <Button size="sm" onClick={() => handleVerifyPayment(order.id, true)}>
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 Approve
@@ -631,6 +642,15 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Order Preview Dialog */}
+      {previewOrder && (
+        <OrderPreviewDialog 
+          order={previewOrder}
+          open={showPreview}
+          onOpenChange={setShowPreview}
+        />
+      )}
     </div>
   );
 }
