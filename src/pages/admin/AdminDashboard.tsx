@@ -58,6 +58,7 @@ export default function AdminDashboard() {
   // State for staff
   const [staff, setStaff] = useState<any[]>([]);
   const [showAddStaff, setShowAddStaff] = useState(false);
+  const [isCreatingStaff, setIsCreatingStaff] = useState(false);
   const [newStaff, setNewStaff] = useState({
     email: '',
     fullName: '',
@@ -122,54 +123,45 @@ export default function AdminDashboard() {
 
   const handleCreateStaff = async () => {
     try {
+      setIsCreatingStaff(true);
       const staffId = generateStaffId(newStaff.role);
       
-      // Create auth user for staff
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: newStaff.email,
-        password: Math.random().toString(36).slice(-12), // Generate random password
-        email_confirm: true,
-        user_metadata: {
-          full_name: newStaff.fullName,
-          role: newStaff.role
+      // Call edge function to create staff with admin privileges
+      const { data, error } = await supabase.functions.invoke('create-staff', {
+        body: {
+          email: newStaff.email,
+          fullName: newStaff.fullName,
+          phoneNumber: newStaff.phoneNumber,
+          role: newStaff.role,
+          staffId: staffId
         }
       });
 
-      if (authError) throw authError;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to create staff member');
+      }
 
-      // Insert into staff table
-      const { error: staffError } = await supabase
-        .from('staff')
-        .insert({
-          staff_id: staffId,
-          user_id: authData.user.id,
-          email: newStaff.email,
-          full_name: newStaff.fullName,
-          phone_number: newStaff.phoneNumber,
-          role: newStaff.role,
-          created_by_admin: user?.id
-        });
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to create staff member');
+      }
 
-      if (staffError) throw staffError;
+      toast.success(`Staff member created successfully (ID: ${staffId})`);
 
-      // Insert into user_roles table
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: newStaff.role,
-          created_by: user?.id
-        });
-
-      if (roleError) throw roleError;
-
-      toast.success(`Staff member created with ID: ${staffId}`);
       setShowAddStaff(false);
-      setNewStaff({ email: '', fullName: '', phoneNumber: '', role: 'OPERATOR' });
-      fetchDashboardData();
+      setNewStaff({
+        email: '',
+        fullName: '',
+        phoneNumber: '',
+        role: 'OPERATOR'
+      });
+      
+      await fetchDashboardData();
     } catch (error: any) {
       console.error('Error creating staff:', error);
-      toast.error(error.message || 'Failed to create staff member');
+      toast.error(error.message || "Failed to create staff member. Please check your permissions.");
+    } finally {
+      setIsCreatingStaff(false);
     }
   };
 
@@ -537,7 +529,9 @@ export default function AdminDashboard() {
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setShowAddStaff(false)}>Cancel</Button>
-                    <Button onClick={handleCreateStaff}>Create Staff</Button>
+                    <Button onClick={handleCreateStaff} disabled={isCreatingStaff}>
+                      {isCreatingStaff ? 'Creating...' : 'Create Staff'}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

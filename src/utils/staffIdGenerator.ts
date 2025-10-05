@@ -1,4 +1,4 @@
-// Generate unique staff ID with role prefix
+// Generate unique 10-character alphanumeric staff ID
 export const generateStaffId = (role: string): string => {
   const prefixes: Record<string, string> = {
     'OPERATOR': 'OPR',
@@ -8,9 +8,12 @@ export const generateStaffId = (role: string): string => {
   };
 
   const prefix = prefixes[role] || 'STF';
-  const randomNumbers = Math.floor(1000000 + Math.random() * 9000000).toString();
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const randomChars = Array.from({ length: 7 }, () => 
+    chars.charAt(Math.floor(Math.random() * chars.length))
+  ).join('');
   
-  return `${prefix}${randomNumbers}`;
+  return `${prefix}${randomChars}`;
 };
 
 // Validate staff ID format
