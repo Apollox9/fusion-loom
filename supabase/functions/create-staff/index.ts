@@ -102,27 +102,36 @@ serve(async (req) => {
 
     console.log('Staff record created');
 
-    // Insert into user_roles table
-    const { error: roleError } = await supabaseClient
+    // Check if role already exists (from trigger), if not insert
+    const { data: existingRole } = await supabaseClient
       .from('user_roles')
-      .insert({
-        user_id: authData.user.id,
-        role: role,
-        created_by: user.id
-      });
+      .select('id')
+      .eq('user_id', authData.user.id)
+      .eq('role', role)
+      .single();
 
-    if (roleError) {
-      console.error('Failed to insert user role:', roleError);
-      // Clean up staff and auth user
-      await supabaseClient.from('staff').delete().eq('user_id', authData.user.id);
-      await supabaseClient.auth.admin.deleteUser(authData.user.id);
-      return new Response(
-        JSON.stringify({ error: `Failed to assign role: ${roleError.message}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!existingRole) {
+      const { error: roleError } = await supabaseClient
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          role: role,
+          created_by: user.id
+        });
+
+      if (roleError) {
+        console.error('Failed to insert user role:', roleError);
+        // Clean up staff and auth user
+        await supabaseClient.from('staff').delete().eq('user_id', authData.user.id);
+        await supabaseClient.auth.admin.deleteUser(authData.user.id);
+        return new Response(
+          JSON.stringify({ error: `Failed to assign role: ${roleError.message}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
-    console.log('User role assigned successfully');
+    console.log('User role verified/assigned successfully');
 
     return new Response(
       JSON.stringify({ 
