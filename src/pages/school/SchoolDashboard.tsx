@@ -28,6 +28,7 @@ import { formatTZS, calculateProfitByTier, getProfitTier } from '@/utils/pricing
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { SchoolSettings } from '@/components/client/SchoolSettings';
+import { ProfitTab } from '@/components/client/ProfitTab';
 
 const AnimatedCounter = ({ end, duration = 2000, prefix = "", suffix = "" }: { 
   end: number; 
@@ -369,17 +370,7 @@ export default function SchoolDashboard() {
           </TabsContent>
 
           <TabsContent value="profits">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profit Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="p-4 bg-green-500/10 rounded-lg border">
-                  <p className="text-sm text-muted-foreground">Total Projected</p>
-                  <p className="text-2xl font-bold text-green-600">{formatTZS(stats.projectedProfit)}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <ProfitTab sessions={sessions} stats={stats} />
           </TabsContent>
 
           <TabsContent value="settings">
