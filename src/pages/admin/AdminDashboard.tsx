@@ -59,11 +59,19 @@ export default function AdminDashboard() {
   const [staff, setStaff] = useState<any[]>([]);
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [isCreatingStaff, setIsCreatingStaff] = useState(false);
-  const [newStaff, setNewStaff] = useState({
+  const [newStaff, setNewStaff] = useState<{
+    email: string;
+    fullName: string;
+    phoneNumber: string;
+    role: 'OPERATOR' | 'SUPERVISOR' | 'AUDITOR' | 'AGENT';
+    businessName?: string;
+    country?: string;
+    region?: string;
+  }>({
     email: '',
     fullName: '',
     phoneNumber: '',
-    role: 'OPERATOR' as 'OPERATOR' | 'SUPERVISOR' | 'AUDITOR'
+    role: 'OPERATOR'
   });
 
   useEffect(() => {
@@ -127,14 +135,23 @@ export default function AdminDashboard() {
       const staffId = generateStaffId(newStaff.role);
       
       // Call edge function to create staff with admin privileges
+      const body: any = {
+        email: newStaff.email,
+        fullName: newStaff.fullName,
+        phoneNumber: newStaff.phoneNumber,
+        role: newStaff.role,
+        staffId: staffId
+      };
+
+      // Add agent-specific fields if role is AGENT
+      if (newStaff.role === 'AGENT') {
+        body.businessName = newStaff.businessName;
+        body.country = newStaff.country;
+        body.region = newStaff.region;
+      }
+
       const { data, error } = await supabase.functions.invoke('create-staff', {
-        body: {
-          email: newStaff.email,
-          fullName: newStaff.fullName,
-          phoneNumber: newStaff.phoneNumber,
-          role: newStaff.role,
-          staffId: staffId
-        }
+        body
       });
 
       if (error) {
@@ -153,7 +170,10 @@ export default function AdminDashboard() {
         email: '',
         fullName: '',
         phoneNumber: '',
-        role: 'OPERATOR'
+        role: 'OPERATOR',
+        businessName: '',
+        country: '',
+        region: ''
       });
       
       await fetchDashboardData();
@@ -171,12 +191,24 @@ export default function AdminDashboard() {
         const pendingOrder = pendingOrders.find(o => o.id === orderId);
         if (!pendingOrder) return;
 
+        // Use admin user ID as created_by_user since the school user may not exist yet
+        const { data: adminProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'ADMIN')
+          .limit(1)
+          .single();
+
+        if (!adminProfile) {
+          throw new Error('Admin profile not found');
+        }
+
         // Create actual order from pending order with QUEUED status
         const { error: orderError } = await supabase
           .from('orders')
           .insert({
             created_by_school: pendingOrder.school_id,
-            created_by_user: pendingOrder.school_id,
+            created_by_user: adminProfile.id, // Use admin ID instead of school_id
             school_name: pendingOrder.school_name,
             headmaster_name: pendingOrder.headmaster_name,
             country: pendingOrder.country,
@@ -523,9 +555,40 @@ export default function AdminDashboard() {
                           <SelectItem value="OPERATOR">Operator</SelectItem>
                           <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
                           <SelectItem value="AUDITOR">Auditor</SelectItem>
+                          <SelectItem value="AGENT">Agent</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    
+                    {/* Agent-specific fields */}
+                    {newStaff.role === 'AGENT' && (
+                      <>
+                        <div>
+                          <Label>Business Name</Label>
+                          <Input
+                            value={newStaff.businessName || ''}
+                            onChange={(e) => setNewStaff({ ...newStaff, businessName: e.target.value })}
+                            placeholder="Enter business name"
+                          />
+                        </div>
+                        <div>
+                          <Label>Country</Label>
+                          <Input
+                            value={newStaff.country || ''}
+                            onChange={(e) => setNewStaff({ ...newStaff, country: e.target.value })}
+                            placeholder="Enter country"
+                          />
+                        </div>
+                        <div>
+                          <Label>Region</Label>
+                          <Input
+                            value={newStaff.region || ''}
+                            onChange={(e) => setNewStaff({ ...newStaff, region: e.target.value })}
+                            placeholder="Enter region"
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setShowAddStaff(false)}>Cancel</Button>

@@ -52,7 +52,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, fullName, phoneNumber, role, staffId } = await req.json();
+    const { email, fullName, phoneNumber, role, staffId, businessName, country, region } = await req.json();
 
     console.log('Creating staff member:', { email, fullName, role, staffId });
 
@@ -101,6 +101,31 @@ serve(async (req) => {
     }
 
     console.log('Staff record created');
+
+    // If role is AGENT, also insert into agents table
+    if (role === 'AGENT') {
+      const { error: agentError } = await supabaseClient
+        .from('agents')
+        .insert({
+          user_id: authData.user.id,
+          business_name: businessName,
+          country: country,
+          region: region,
+          sessions_organised: 0
+        });
+
+      if (agentError) {
+        console.error('Failed to insert agent record:', agentError);
+        // Clean up staff and auth user
+        await supabaseClient.from('staff').delete().eq('user_id', authData.user.id);
+        await supabaseClient.auth.admin.deleteUser(authData.user.id);
+        return new Response(
+          JSON.stringify({ error: `Failed to create agent record: ${agentError.message}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log('Agent record created');
+    }
 
     // Check if role already exists (from trigger), if not insert
     const { data: existingRole } = await supabaseClient

@@ -22,6 +22,7 @@ export type Database = {
           id: string
           region: string | null
           registered_at: string
+          sessions_organised: number
           updated_at: string
           user_id: string | null
         }
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           region?: string | null
           registered_at?: string
+          sessions_organised?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -42,6 +44,7 @@ export type Database = {
           id?: string
           region?: string | null
           registered_at?: string
+          sessions_organised?: number
           updated_at?: string
           user_id?: string | null
         }
