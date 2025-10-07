@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { SchoolSettings } from '@/components/client/SchoolSettings';
 import { ProfitTab } from '@/components/client/ProfitTab';
+import { ProgressTabContent } from '@/components/client/ProgressTabContent';
 
 const AnimatedCounter = ({ end, duration = 2000, prefix = "", suffix = "" }: { 
   end: number; 
@@ -104,7 +105,7 @@ export default function SchoolDashboard() {
       const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
-        .eq('created_by_user', user?.id)
+        .eq('created_by_school', user?.id)
         .order('created_at', { ascending: false });
 
       // Combine and map pending orders to have status 'PENDING'
@@ -347,26 +348,7 @@ export default function SchoolDashboard() {
           </TabsContent>
 
           <TabsContent value="progress">
-            <Card>
-              <CardHeader>
-                <CardTitle>Print Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {sessions.filter(s => s.status === 'IN_PROGRESS').length > 0 ? (
-                  <div className="space-y-4">
-                    {sessions.filter(s => s.status === 'IN_PROGRESS').map((session: any) => (
-                      <div key={session.id} className="p-4 border rounded-lg">
-                        <h4 className="font-medium mb-2">Session: {session.external_ref}</h4>
-                        <Progress value={50} className="mb-2" />
-                        <p className="text-sm text-muted-foreground">In progress...</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12"><Printer className="w-16 h-16 mx-auto mb-4 opacity-50" /><p>No ongoing sessions</p></div>
-                )}
-              </CardContent>
-            </Card>
+            <ProgressTabContent sessions={sessions} />
           </TabsContent>
 
           <TabsContent value="profits">
