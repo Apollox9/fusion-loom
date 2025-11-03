@@ -57,15 +57,6 @@ serve(async (req) => {
       );
     }
 
-    // Fetch all classes belonging to this session
-    const { data: classes, error: classesError } = await supabase
-      .from("classes")
-      .select("*")
-      .eq("session_id", session.id)
-      .order("name", { ascending: true });
-
-    if (classesError) throw classesError;
-
     // Fetch school
     const { data: school, error: schoolError } = await supabase
       .from("schools")
@@ -74,6 +65,23 @@ serve(async (req) => {
       .maybeSingle();
 
     if (schoolError) throw schoolError;
+
+    // Calculate 5 minutes before and after the session creation time
+    const sessionCreationTime = new Date(session.created_at).getTime();
+    const fiveMinutesInMilliseconds = 5 * 60 * 1000;
+    const timeBefore = new Date(sessionCreationTime - fiveMinutesInMilliseconds).toISOString();
+    const timeAfter = new Date(sessionCreationTime + fiveMinutesInMilliseconds).toISOString();
+
+    // Fetch classes for the session, with the new 5-minute time window
+    const { data: classes, error: classesError } = await supabase
+      .from("classes")
+      .select("id, name, is_attended, total_students_served_in_class, total_students_to_serve_in_class")
+      .eq("school_id", session.created_by_school)
+      .gte("created_at", timeBefore) // 5 minutes before session creation
+      .lte("created_at", timeAfter) // 5 minutes after session creation
+      .order("created_at", { ascending: true });
+
+    if (classesError) throw classesError;
 
     return new Response(
       JSON.stringify({
