@@ -65,32 +65,6 @@ serve(async (req) => {
       .order("name", { ascending: true });
 
     if (classesError) throw classesError;
-    const classesArray = classes ?? [];
-    const classIds = classesArray.map((c) => c.id);
-
-    // Fetch students in these classes
-    const { data: students, error: studentsError } = await supabase
-      .from("students")
-      .select("*")
-      .in("class_id", classIds);
-
-    if (studentsError) throw studentsError;
-    const studentsArray = students ?? [];
-
-    // Add per-class counts
-    const classesWithCounts = classesArray.map((cls) => {
-      const total_students_to_serve_in_class = studentsArray.filter(
-        (s) => s.class_id === cls.id
-      ).length;
-      return {
-        ...cls,
-        total_students_to_serve_in_class,
-      };
-    });
-
-    // Compute session-level totals
-    const total_student_count = studentsArray.length;
-    const total_classes_to_serve = classesArray.length;
 
     // Fetch school
     const { data: school, error: schoolError } = await supabase
@@ -101,20 +75,13 @@ serve(async (req) => {
 
     if (schoolError) throw schoolError;
 
-    // Build session object with computed values
-    const sessionWithComputed = {
-      ...session,
-      total_student_count,
-      total_classes_to_serve,
-    };
-
     return new Response(
       JSON.stringify({
         message: "Operator and session found!",
         operator,
-        session: sessionWithComputed,
+        session,
         school: school ?? null,
-        classes: classesWithCounts,
+        classes: classes ?? [],
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
