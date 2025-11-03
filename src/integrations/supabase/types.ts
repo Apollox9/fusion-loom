@@ -142,7 +142,9 @@ export type Database = {
           is_attended: boolean
           name: string
           school_id: string
+          session_id: string | null
           total_students_served_in_class: number
+          total_students_to_serve_in_class: number
           updated_at: string
         }
         Insert: {
@@ -152,7 +154,9 @@ export type Database = {
           is_attended?: boolean
           name: string
           school_id: string
+          session_id?: string | null
           total_students_served_in_class?: number
+          total_students_to_serve_in_class?: number
           updated_at?: string
         }
         Update: {
@@ -162,7 +166,9 @@ export type Database = {
           is_attended?: boolean
           name?: string
           school_id?: string
+          session_id?: string | null
           total_students_served_in_class?: number
+          total_students_to_serve_in_class?: number
           updated_at?: string
         }
         Relationships: [
@@ -171,6 +177,13 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -440,10 +453,14 @@ export type Database = {
           created_by_school: string
           created_by_user: string | null
           delivery: Json | null
+          device_used_mac: string | null
           district: string | null
           external_ref: string | null
           headmaster_name: string | null
+          hosted_by: string | null
           id: string
+          is_served: boolean
+          is_session_active: boolean
           packaging: Json | null
           payment_method: string | null
           pickup: Json | null
@@ -457,9 +474,12 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
           submission_time: string | null
           total_amount: number | null
+          total_classes_served: number
+          total_classes_to_serve: number
           total_dark_garments: number | null
           total_garments: number
           total_light_garments: number | null
+          total_students_served_in_school: number
           updated_at: string
         }
         Insert: {
@@ -473,10 +493,14 @@ export type Database = {
           created_by_school: string
           created_by_user?: string | null
           delivery?: Json | null
+          device_used_mac?: string | null
           district?: string | null
           external_ref?: string | null
           headmaster_name?: string | null
+          hosted_by?: string | null
           id?: string
+          is_served?: boolean
+          is_session_active?: boolean
           packaging?: Json | null
           payment_method?: string | null
           pickup?: Json | null
@@ -490,9 +514,12 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           submission_time?: string | null
           total_amount?: number | null
+          total_classes_served?: number
+          total_classes_to_serve?: number
           total_dark_garments?: number | null
           total_garments?: number
           total_light_garments?: number | null
+          total_students_served_in_school?: number
           updated_at?: string
         }
         Update: {
@@ -506,10 +533,14 @@ export type Database = {
           created_by_school?: string
           created_by_user?: string | null
           delivery?: Json | null
+          device_used_mac?: string | null
           district?: string | null
           external_ref?: string | null
           headmaster_name?: string | null
+          hosted_by?: string | null
           id?: string
+          is_served?: boolean
+          is_session_active?: boolean
           packaging?: Json | null
           payment_method?: string | null
           pickup?: Json | null
@@ -523,9 +554,12 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           submission_time?: string | null
           total_amount?: number | null
+          total_classes_served?: number
+          total_classes_to_serve?: number
           total_dark_garments?: number | null
           total_garments?: number
           total_light_garments?: number | null
+          total_students_served_in_school?: number
           updated_at?: string
         }
         Relationships: [
@@ -768,6 +802,7 @@ export type Database = {
           id: string
           phone_number: string | null
           role: Database["public"]["Enums"]["user_role"]
+          sessions_hosted: number
           staff_id: string
           updated_at: string
           user_id: string | null
@@ -780,6 +815,7 @@ export type Database = {
           id?: string
           phone_number?: string | null
           role: Database["public"]["Enums"]["user_role"]
+          sessions_hosted?: number
           staff_id: string
           updated_at?: string
           user_id?: string | null
@@ -792,6 +828,7 @@ export type Database = {
           id?: string
           phone_number?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          sessions_hosted?: number
           staff_id?: string
           updated_at?: string
           user_id?: string | null
@@ -945,49 +982,52 @@ export type Database = {
         Row: {
           class_id: string
           created_at: string
+          dark_garment_count: number
           dark_garments_printed: boolean
           full_name: string
           id: string
           is_served: boolean
+          light_garment_count: number
           light_garments_printed: boolean
           printed_dark_garment_count: number
           printed_light_garment_count: number
           school_id: string
+          session_id: string | null
           student_id: string | null
-          total_dark_garment_count: number
-          total_light_garment_count: number
           updated_at: string
         }
         Insert: {
           class_id: string
           created_at?: string
+          dark_garment_count?: number
           dark_garments_printed?: boolean
           full_name: string
           id?: string
           is_served?: boolean
+          light_garment_count?: number
           light_garments_printed?: boolean
           printed_dark_garment_count?: number
           printed_light_garment_count?: number
           school_id: string
+          session_id?: string | null
           student_id?: string | null
-          total_dark_garment_count?: number
-          total_light_garment_count?: number
           updated_at?: string
         }
         Update: {
           class_id?: string
           created_at?: string
+          dark_garment_count?: number
           dark_garments_printed?: boolean
           full_name?: string
           id?: string
           is_served?: boolean
+          light_garment_count?: number
           light_garments_printed?: boolean
           printed_dark_garment_count?: number
           printed_light_garment_count?: number
           school_id?: string
+          session_id?: string | null
           student_id?: string | null
-          total_dark_garment_count?: number
-          total_light_garment_count?: number
           updated_at?: string
         }
         Relationships: [
@@ -1003,6 +1043,13 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]

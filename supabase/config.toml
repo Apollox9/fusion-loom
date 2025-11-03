@@ -2,3 +2,24 @@ project_id = "ylveodmlyhoygullpcct"
 
 [functions.create-staff]
 verify_jwt = true
+
+[functions.init-session]
+verify_jwt = false
+
+[functions.get-class-students]
+verify_jwt = false
+
+[functions.update-student-status]
+verify_jwt = false
+
+[functions.update-class-status]
+verify_jwt = false
+
+[functions.update-session-status]
+verify_jwt = false
+
+[functions.refresh-student-data]
+verify_jwt = false
+
+[functions.update-operator-record]
+verify_jwt = false
