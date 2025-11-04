@@ -1,18 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Receipt, 
   Upload, 
   Users, 
   Shirt, 
   CreditCard,
-  FileImage,
-  Hash
+  FileImage
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,13 +42,33 @@ interface PaymentSubmissionProps {
 }
 
 export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSubmissionProps) {
-  const [paymentMethod, setPaymentMethod] = useState<'receipt_number' | 'receipt_upload'>('receipt_number');
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [receiptNumber, setReceiptNumber] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { user, profile } = useAuthContext();
+
+  // Fetch payment methods on mount
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching payment methods:', error);
+      } else {
+        setPaymentMethods(data || []);
+      }
+    };
+
+    fetchPaymentMethods();
+  }, []);
 
   // Calculate total cost using the pricing utility
   const studentsData = sessionData.classes?.flatMap((cls: any) => 
@@ -79,19 +98,19 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (paymentMethod === 'receipt_number' && !receiptNumber.trim()) {
+    if (!selectedPaymentMethod) {
       toast({
-        title: 'Receipt number required',
-        description: 'Please enter a receipt number',
+        title: 'Payment method required',
+        description: 'Please select a payment method',
         variant: 'destructive'
       });
       return;
     }
     
-    if (paymentMethod === 'receipt_upload' && !receiptFile) {
+    if (!receiptFile && !receiptNumber.trim()) {
       toast({
-        title: 'Receipt file required',
-        description: 'Please upload a receipt image',
+        title: 'Payment proof required',
+        description: 'Please provide either a receipt number or upload a receipt image',
         variant: 'destructive'
       });
       return;
@@ -111,43 +130,66 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
         throw new Error('School or profile data not found');
       }
 
-      // Generate unique order ID
-      const orderId = `ORD-${Date.now()}`;
+      // Upload receipt image to storage if provided
+      let receiptImageUrl = null;
+      if (receiptFile) {
+        const fileExt = receiptFile.name.split('.').pop();
+        const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('receipts')
+          .upload(fileName, receiptFile);
 
-      // Insert into pending_orders
-      const { data: pendingOrder, error: pendingError } = await supabase
-        .from('pending_orders')
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('receipts')
+          .getPublicUrl(fileName);
+        
+        receiptImageUrl = publicUrl;
+      }
+
+      // Generate unique external reference
+      const externalRef = `SVC-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+      // Insert into orders table with PENDING status
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
         .insert({
-          order_id: orderId,
-          school_id: schoolData?.id || user?.id,
+          created_by_school: schoolData?.id || user?.id,
+          created_by_user: user?.id,
           school_name: sessionData.schoolName || schoolData?.name || profile?.full_name,
           headmaster_name: schoolData?.headmaster_name || profile?.full_name,
           country: schoolData?.country || profile?.country || 'Tanzania',
           region: schoolData?.region || profile?.region || '',
           district: schoolData?.district || profile?.district || '',
-          total_students: sessionData.totals.totalStudents,
+          total_garments: (sessionData.totals.totalDarkGarments || 0) + (sessionData.totals.totalLightGarments || 0),
           total_dark_garments: sessionData.totals.totalDarkGarments,
           total_light_garments: sessionData.totals.totalLightGarments,
           total_amount: totalAmount,
-          payment_method: paymentMethod === 'receipt_number' ? 'Receipt Number' : 'Receipt Upload',
-          receipt_number: paymentMethod === 'receipt_number' ? receiptNumber : null,
-          receipt_image_url: null, // TODO: Upload file to storage if needed
+          total_classes_to_serve: sessionData.classes?.length || 0,
+          payment_method: selectedPaymentMethod,
+          receipt_number: receiptNumber || null,
+          receipt_image_url: receiptImageUrl,
           session_data: sessionData,
-          payment_verified: false
+          status: 'PENDING',
+          submission_time: new Date().toISOString()
         })
         .select()
         .single();
 
-      if (pendingError) throw pendingError;
+      if (orderError) throw orderError;
 
-      // Insert classes and students
+      // Insert classes and students linked to this order
       for (const classData of sessionData.classes) {
         const { data: classRecord, error: classError } = await supabase
           .from('classes')
           .insert({
             school_id: schoolData?.id || user?.id,
+            order_id: order.id,
             name: classData.className,
-            total_students_served_in_class: classData.students.length
+            total_students_to_serve_in_class: classData.students.length,
+            total_students_served_in_class: 0
           })
           .select()
           .single();
@@ -158,6 +200,7 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
         const studentsToInsert = classData.students.map((student: any) => ({
           school_id: schoolData?.id || user?.id,
           class_id: classRecord.id,
+          session_id: order.id,
           full_name: student.fullName || student.studentName,
           total_dark_garment_count: student.darkGarments || student.darkCount || 0,
           total_light_garment_count: student.lightGarments || student.lightCount || 0,
@@ -173,7 +216,7 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
 
       toast({
         title: 'Order Submitted Successfully',
-        description: `Order ${orderId} is pending admin verification`
+        description: `Order has been submitted and is pending admin verification`
       });
 
       setIsSubmitting(false);
@@ -288,72 +331,62 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label className="text-base font-medium">Proof of Payment Method</Label>
-                  <RadioGroup 
-                    value={paymentMethod} 
-                    onValueChange={(value: 'receipt_number' | 'receipt_upload') => setPaymentMethod(value)}
-                    className="mt-3"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="receipt_number" id="receipt_number" />
-                      <Label htmlFor="receipt_number" className="flex items-center gap-2 cursor-pointer">
-                        <Hash className="w-4 h-4" />
-                        Receipt Number
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="receipt_upload" id="receipt_upload" />
-                      <Label htmlFor="receipt_upload" className="flex items-center gap-2 cursor-pointer">
-                        <FileImage className="w-4 h-4" />
-                        Upload Receipt Image
-                      </Label>
-                    </div>
-                  </RadioGroup>
+                  <Label htmlFor="payment_method">Payment Method</Label>
+                  <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentMethods.map((method) => (
+                        <SelectItem key={method.id} value={method.name}>
+                          {method.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                {paymentMethod === 'receipt_number' ? (
-                  <div>
-                    <Label htmlFor="receipt_number_input">Receipt Number</Label>
+                <div>
+                  <Label htmlFor="receipt_number_input">Receipt Number (Optional)</Label>
+                  <Input
+                    id="receipt_number_input"
+                    value={receiptNumber}
+                    onChange={(e) => setReceiptNumber(e.target.value)}
+                    placeholder="Enter your receipt/transaction number"
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="receipt_file">Receipt Image (Optional)</Label>
+                  <div className="mt-2">
                     <Input
-                      id="receipt_number_input"
-                      value={receiptNumber}
-                      onChange={(e) => setReceiptNumber(e.target.value)}
-                      placeholder="Enter your receipt number"
-                      className="mt-2"
+                      id="receipt_file"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
                     />
-                  </div>
-                ) : (
-                  <div>
-                    <Label htmlFor="receipt_file">Receipt Image</Label>
-                    <div className="mt-2">
-                      <Input
-                        id="receipt_file"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                      <div 
-                        className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                        onClick={() => document.getElementById('receipt_file')?.click()}
-                      >
-                        {receiptFile ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <FileImage className="w-5 h-5 text-emerald-500" />
-                            <span className="text-sm font-medium">{receiptFile.name}</span>
-                          </div>
-                        ) : (
-                          <div>
-                            <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">
-                              Click to upload receipt image
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                    <div 
+                      className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => document.getElementById('receipt_file')?.click()}
+                    >
+                      {receiptFile ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <FileImage className="w-5 h-5 text-emerald-500" />
+                          <span className="text-sm font-medium">{receiptFile.name}</span>
+                        </div>
+                      ) : (
+                        <div>
+                          <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            Click to upload receipt image
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
 
                 <div>
                   <Label htmlFor="notes">Additional Notes (Optional)</Label>

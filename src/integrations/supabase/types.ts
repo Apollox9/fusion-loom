@@ -141,6 +141,7 @@ export type Database = {
           id: string
           is_attended: boolean
           name: string
+          order_id: string | null
           school_id: string
           session_id: string | null
           total_students_served_in_class: number
@@ -153,6 +154,7 @@ export type Database = {
           id?: string
           is_attended?: boolean
           name: string
+          order_id?: string | null
           school_id: string
           session_id?: string | null
           total_students_served_in_class?: number
@@ -165,6 +167,7 @@ export type Database = {
           id?: string
           is_attended?: boolean
           name?: string
+          order_id?: string | null
           school_id?: string
           session_id?: string | null
           total_students_served_in_class?: number
@@ -172,6 +175,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "classes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "classes_school_id_fkey"
             columns: ["school_id"]
@@ -571,6 +581,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_methods: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       pending_orders: {
         Row: {
@@ -982,52 +1019,52 @@ export type Database = {
         Row: {
           class_id: string
           created_at: string
-          dark_garment_count: number
           dark_garments_printed: boolean
           full_name: string
           id: string
           is_served: boolean
-          light_garment_count: number
           light_garments_printed: boolean
           printed_dark_garment_count: number
           printed_light_garment_count: number
           school_id: string
           session_id: string | null
           student_id: string | null
+          total_dark_garment_count: number
+          total_light_garment_count: number
           updated_at: string
         }
         Insert: {
           class_id: string
           created_at?: string
-          dark_garment_count?: number
           dark_garments_printed?: boolean
           full_name: string
           id?: string
           is_served?: boolean
-          light_garment_count?: number
           light_garments_printed?: boolean
           printed_dark_garment_count?: number
           printed_light_garment_count?: number
           school_id: string
           session_id?: string | null
           student_id?: string | null
+          total_dark_garment_count?: number
+          total_light_garment_count?: number
           updated_at?: string
         }
         Update: {
           class_id?: string
           created_at?: string
-          dark_garment_count?: number
           dark_garments_printed?: boolean
           full_name?: string
           id?: string
           is_served?: boolean
-          light_garment_count?: number
           light_garments_printed?: boolean
           printed_dark_garment_count?: number
           printed_light_garment_count?: number
           school_id?: string
           session_id?: string | null
           student_id?: string | null
+          total_dark_garment_count?: number
+          total_light_garment_count?: number
           updated_at?: string
         }
         Relationships: [

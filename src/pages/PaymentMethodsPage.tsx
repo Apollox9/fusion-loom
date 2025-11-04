@@ -1,236 +1,266 @@
-import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, CreditCard, Smartphone, Building2, Copy } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Navbar } from '@/components/layout/Navbar';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Plus, Trash2, Edit, CreditCard } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
-const PaymentMethodsPage = () => {
-  const navigate = useNavigate();
+interface PaymentMethod {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+}
+
+export default function PaymentMethodsPage() {
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
+  const [formData, setFormData] = useState({ name: '', description: '', is_active: true });
   const { toast } = useToast();
 
-  const copyToClipboard = (text: string, type: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied to clipboard",
-      description: `${type} copied successfully`
-    });
+  useEffect(() => {
+    fetchPaymentMethods();
+  }, []);
+
+  const fetchPaymentMethods = async () => {
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch payment methods',
+        variant: 'destructive'
+      });
+    } else {
+      setPaymentMethods(data || []);
+    }
   };
 
-  const mobileMoneyMethods = [
-    {
-      name: "M-Pesa",
-      number: "0754 123 456",
-      logo: "📱",
-      color: "bg-green-500"
-    },
-    {
-      name: "Airtel Money",
-      number: "0678 987 654",
-      logo: "📲",
-      color: "bg-red-500"
-    },
-    {
-      name: "Mixx by Yas",
-      number: "0745 555 777",
-      logo: "💳",
-      color: "bg-purple-500"
-    },
-    {
-      name: "Halopesa",
-      number: "0622 333 444",
-      logo: "📞",
-      color: "bg-blue-500"
-    },
-    {
-      name: "Selcom",
-      number: "898989",
-      logo: "💰",
-      color: "bg-orange-500"
+  const handleSubmit = async () => {
+    if (!formData.name.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Payment method name is required',
+        variant: 'destructive'
+      });
+      return;
     }
-  ];
 
-  const bankAccounts = [
-    {
-      name: "CRDB Bank",
-      accountNumber: "0150 1234 5678",
-      accountName: "Project Fusion Ltd",
-      logo: "🏦",
-      color: "bg-blue-600"
-    },
-    {
-      name: "NMB Bank",
-      accountNumber: "1020 9876 5432",
-      accountName: "Project Fusion Ltd",
-      logo: "🏛️",
-      color: "bg-green-600"
-    },
-    {
-      name: "NBC Bank",
-      accountNumber: "0110 1111 2222",
-      accountName: "Project Fusion Ltd",
-      logo: "🏢",
-      color: "bg-indigo-600"
+    try {
+      if (editingMethod) {
+        const { error } = await supabase
+          .from('payment_methods')
+          .update({
+            name: formData.name,
+            description: formData.description || null,
+            is_active: formData.is_active
+          })
+          .eq('id', editingMethod.id);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Success',
+          description: 'Payment method updated successfully'
+        });
+      } else {
+        const { error } = await supabase
+          .from('payment_methods')
+          .insert({
+            name: formData.name,
+            description: formData.description || null,
+            is_active: formData.is_active
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Success',
+          description: 'Payment method added successfully'
+        });
+      }
+
+      setIsDialogOpen(false);
+      setEditingMethod(null);
+      setFormData({ name: '', description: '', is_active: true });
+      fetchPaymentMethods();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to save payment method',
+        variant: 'destructive'
+      });
     }
-  ];
+  };
+
+  const handleEdit = (method: PaymentMethod) => {
+    setEditingMethod(method);
+    setFormData({
+      name: method.name,
+      description: method.description || '',
+      is_active: method.is_active
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this payment method?')) return;
+
+    const { error } = await supabase
+      .from('payment_methods')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete payment method',
+        variant: 'destructive'
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Payment method deleted successfully'
+      });
+      fetchPaymentMethods();
+    }
+  };
+
+  const toggleActive = async (method: PaymentMethod) => {
+    const { error } = await supabase
+      .from('payment_methods')
+      .update({ is_active: !method.is_active })
+      .eq('id', method.id);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update payment method status',
+        variant: 'destructive'
+      });
+    } else {
+      fetchPaymentMethods();
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-muted/30 to-background">
-      {/* Header */}
-      <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <button 
-              onClick={() => navigate(-1)}
-              className="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back</span>
-            </button>
-            <div className="flex items-center space-x-3">
-              <CreditCard className="w-6 h-6 text-primary" />
-              <h1 className="text-lg font-bold font-display">Payment Methods</h1>
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="container mx-auto p-6 pt-24">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Payment Methods</h1>
+            <p className="text-muted-foreground mt-1">Manage available payment methods for schools</p>
+          </div>
+          <Button onClick={() => {
+            setEditingMethod(null);
+            setFormData({ name: '', description: '', is_active: true });
+            setIsDialogOpen(true);
+          }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Payment Method
+          </Button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {paymentMethods.map((method) => (
+            <Card key={method.id}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-5 h-5" />
+                    {method.name}
+                  </div>
+                  <Switch
+                    checked={method.is_active}
+                    onCheckedChange={() => toggleActive(method)}
+                  />
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {method.description && (
+                  <p className="text-sm text-muted-foreground mb-4">{method.description}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(method)}
+                  >
+                    <Edit className="w-4 h-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDelete(method.id)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingMethod ? 'Edit Payment Method' : 'Add Payment Method'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., M-Pesa, Bank Transfer"
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Optional description"
+                  rows={3}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="is_active">Active</Label>
+                <Switch
+                  id="is_active"
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                />
+              </div>
             </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <section className="py-16 px-6">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-12 animate-fade-in-up">
-            <h1 className="text-4xl md:text-5xl font-bold font-display mb-6 leading-tight">
-              <span className="text-gradient">Payment Methods</span>
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-              Choose your preferred payment method to complete your uniform order. 
-              All payments are processed securely.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Mobile Money */}
-            <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-3">
-                  <Smartphone className="w-6 h-6 text-primary" />
-                  <span>Mobile Money</span>
-                </CardTitle>
-                <CardDescription>
-                  Pay using your mobile money account
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {mobileMoneyMethods.map((method, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 ${method.color} rounded-full flex items-center justify-center text-white text-lg`}>
-                        {method.logo}
-                      </div>
-                      <div>
-                        <p className="font-semibold">{method.name}</p>
-                        <p className="text-sm text-muted-foreground">{method.number}</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(method.number, method.name)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Bank Accounts */}
-            <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-3">
-                  <Building2 className="w-6 h-6 text-primary" />
-                  <span>Bank Transfer</span>
-                </CardTitle>
-                <CardDescription>
-                  Transfer directly to our bank accounts
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {bankAccounts.map((bank, index) => (
-                  <div key={index} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-10 h-10 ${bank.color} rounded-full flex items-center justify-center text-white text-lg`}>
-                          {bank.logo}
-                        </div>
-                        <div>
-                          <p className="font-semibold">{bank.name}</p>
-                          <p className="text-sm text-muted-foreground">{bank.accountName}</p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(bank.accountNumber, `${bank.name} account`)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="bg-muted/30 rounded p-3">
-                      <p className="text-sm text-muted-foreground mb-1">Account Number</p>
-                      <p className="font-mono font-semibold">{bank.accountNumber}</p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Instructions */}
-          <Card className="mt-8 shadow-lg animate-fade-in-up" style={{ animationDelay: '600ms' }}>
-            <CardHeader>
-              <CardTitle>Payment Instructions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-semibold mb-2">For Mobile Money:</h4>
-                  <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-                    <li>Dial your provider's USSD code</li>
-                    <li>Select "Send Money" or "Lipa"</li>
-                    <li>Enter the recipient number</li>
-                    <li>Enter the exact amount</li>
-                    <li>Complete the transaction</li>
-                    <li>Keep the confirmation SMS</li>
-                  </ol>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">For Bank Transfer:</h4>
-                  <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-                    <li>Visit your bank or use mobile banking</li>
-                    <li>Select "Transfer" or "Send Money"</li>
-                    <li>Enter the account details above</li>
-                    <li>Enter the exact amount</li>
-                    <li>Include your school name in reference</li>
-                    <li>Keep the transfer receipt</li>
-                  </ol>
-                </div>
-              </div>
-              
-              <div className="mt-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                <p className="text-sm font-medium text-primary">
-                  <strong>Important:</strong> After making payment, upload your receipt/confirmation 
-                  when submitting your session. This helps us verify and process your order quickly.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit}>
+                {editingMethod ? 'Update' : 'Add'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
-};
-
-export default PaymentMethodsPage;
+}
