@@ -174,7 +174,7 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
           session_data: sessionData,
           status: 'PENDING',
           submission_time: new Date().toISOString()
-        })
+        } as any)
         .select()
         .single();
 
