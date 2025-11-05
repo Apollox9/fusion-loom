@@ -149,74 +149,39 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
         receiptImageUrl = publicUrl;
       }
 
-      // Generate unique external reference
-      const externalRef = `SVC-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      // Generate unique order ID
+      const orderId = `ORD-${Date.now()}`;
+      
+      const schoolId = schoolData?.id || user?.id;
 
-      // Insert into orders table with PENDING status
+      // Insert into pending_orders table for admin verification
       const { data: order, error: orderError } = await supabase
-        .from('orders')
+        .from('pending_orders')
         .insert({
-          created_by_school: schoolData?.id || user?.id,
-          created_by_user: user?.id,
-          school_name: sessionData.schoolName || schoolData?.name || profile?.full_name,
-          headmaster_name: schoolData?.headmaster_name || profile?.full_name,
-          country: schoolData?.country || profile?.country || 'Tanzania',
-          region: schoolData?.region || profile?.region || '',
-          district: schoolData?.district || profile?.district || '',
-          total_garments: (sessionData.totals.totalDarkGarments || 0) + (sessionData.totals.totalLightGarments || 0),
+          school_id: schoolId,
+          order_id: orderId,
+          total_students: sessionData.totals.totalStudents,
           total_dark_garments: sessionData.totals.totalDarkGarments,
           total_light_garments: sessionData.totals.totalLightGarments,
           total_amount: totalAmount,
-          total_classes_to_serve: sessionData.classes?.length || 0,
+          session_data: sessionData,
+          country: schoolData?.country || profile?.country || 'Tanzania',
+          region: schoolData?.region || profile?.region || '',
+          district: schoolData?.district || profile?.district || '',
           payment_method: selectedPaymentMethod,
           receipt_number: receiptNumber || null,
           receipt_image_url: receiptImageUrl,
-          session_data: sessionData,
-          status: 'SUBMITTED',
-          submission_time: new Date().toISOString()
-        } as any)
+          school_name: sessionData.schoolName || schoolData?.name || profile?.full_name,
+          headmaster_name: schoolData?.headmaster_name || profile?.full_name,
+        })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
-      // Insert classes and students linked to this order
-      for (const classData of sessionData.classes) {
-        const { data: classRecord, error: classError } = await supabase
-          .from('classes')
-          .insert({
-            school_id: schoolData?.id || user?.id,
-            order_id: order.id,
-            session_id: order.id,
-            name: classData.className,
-            total_students_to_serve_in_class: classData.students.length
-          } as any)
-          .select()
-          .single();
-
-        if (classError) throw classError;
-
-        // Insert students for this class
-        const studentsToInsert = classData.students.map((student: any) => ({
-          school_id: schoolData?.id || user?.id,
-          class_id: classRecord.id,
-          session_id: order.id,
-          full_name: student.fullName || student.studentName,
-          total_dark_garment_count: student.darkGarments || student.darkCount || 0,
-          total_light_garment_count: student.lightGarments || student.lightCount || 0,
-          is_served: false
-        }));
-
-        const { error: studentsError } = await supabase
-          .from('students')
-          .insert(studentsToInsert);
-
-        if (studentsError) throw studentsError;
-      }
-
       toast({
         title: 'Order Submitted Successfully',
-        description: `Order has been submitted and is awaiting admin confirmation`
+        description: `Your order (${orderId}) is pending admin verification. You'll be notified once it's approved.`
       });
 
       setIsSubmitting(false);

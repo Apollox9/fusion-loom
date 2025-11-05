@@ -185,69 +185,94 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleVerifyPayment = async (orderId: string, verify: boolean) => {
+  const handleVerifyPayment = async (orderId: string, approve: boolean) => {
     try {
-      if (verify) {
+      if (approve) {
+        // Move from pending to actual orders
         const pendingOrder = pendingOrders.find(o => o.id === orderId);
         if (!pendingOrder) return;
 
-        // Use admin user ID as created_by_user since the school user may not exist yet
-        const { data: adminProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('role', 'ADMIN')
-          .limit(1)
-          .single();
-
-        if (!adminProfile) {
-          throw new Error('Admin profile not found');
-        }
-
-        // Create actual order from pending order with QUEUED status
-        const { error: orderError } = await supabase
+        // Create order in orders table
+        const { data: newOrder, error: orderError } = await supabase
           .from('orders')
           .insert({
             created_by_school: pendingOrder.school_id,
-            created_by_user: adminProfile.id, // Use admin ID instead of school_id
-            school_name: pendingOrder.school_name,
-            headmaster_name: pendingOrder.headmaster_name,
-            country: pendingOrder.country,
-            region: pendingOrder.region,
-            district: pendingOrder.district,
-            external_ref: pendingOrder.order_id,
-            total_garments: pendingOrder.total_dark_garments + pendingOrder.total_light_garments,
+            created_by_user: pendingOrder.school_id,
+            status: 'SUBMITTED',
+            total_students: pendingOrder.total_students,
             total_dark_garments: pendingOrder.total_dark_garments,
             total_light_garments: pendingOrder.total_light_garments,
             total_amount: pendingOrder.total_amount,
+            session_data: pendingOrder.session_data,
+            country: pendingOrder.country,
+            region: pendingOrder.region,
+            district: pendingOrder.district,
             payment_method: pendingOrder.payment_method,
             receipt_number: pendingOrder.receipt_number,
             receipt_image_url: pendingOrder.receipt_image_url,
-            session_data: pendingOrder.session_data,
-            status: 'QUEUED',
-            submission_time: new Date().toISOString(),
-            queued_at: new Date().toISOString()
-          });
+            school_name: pendingOrder.school_name,
+            headmaster_name: pendingOrder.headmaster_name,
+            total_classes_to_serve: pendingOrder.session_data?.classes?.length || 0,
+          })
+          .select()
+          .single();
 
         if (orderError) throw orderError;
 
-        // Delete from pending_orders
-        await supabase
-          .from('pending_orders')
-          .delete()
-          .eq('id', orderId);
+        // Insert classes and students from session_data
+        if (pendingOrder.session_data?.classes) {
+          for (const classData of pendingOrder.session_data.classes) {
+            const { data: classRecord, error: classError } = await supabase
+              .from('classes')
+              .insert({
+                school_id: pendingOrder.school_id,
+                order_id: newOrder.id,
+                session_id: newOrder.id,
+                name: classData.className,
+                total_students_to_serve_in_class: classData.students?.length || 0
+              })
+              .select()
+              .single();
+
+            if (classError) throw classError;
+
+            // Insert students
+            if (classData.students && classData.students.length > 0) {
+              const studentsToInsert = classData.students.map((student: any) => ({
+                school_id: pendingOrder.school_id,
+                class_id: classRecord.id,
+                full_name: student.fullName || student.studentName,
+                student_id: student.studentId || null,
+                total_dark_garment_count: student.darkGarments || student.darkCount || 0,
+                total_light_garment_count: student.lightGarments || student.lightCount || 0,
+              }));
+
+              const { error: studentsError } = await supabase
+                .from('students')
+                .insert(studentsToInsert);
+
+              if (studentsError) throw studentsError;
+            }
+          }
+        }
+
+        // Delete from pending
+        await supabase.from('pending_orders').delete().eq('id', orderId);
       } else {
         // Just delete if rejected
-        await supabase
-          .from('pending_orders')
-          .delete()
-          .eq('id', orderId);
+        await supabase.from('pending_orders').delete().eq('id', orderId);
       }
 
-      toast.success(verify ? 'Payment verified! Order moved to queue.' : 'Payment rejected and order deleted.');
+      if (approve) {
+        toast.success("Payment verified! Order has been approved and moved to active orders.");
+      } else {
+        toast.success("Payment rejected and order removed.");
+      }
+
       fetchDashboardData();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error verifying payment:', error);
-      toast.error(error.message || 'Failed to process payment verification');
+      toast.error("Failed to process payment verification");
     }
   };
 
