@@ -189,9 +189,8 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
             order_id: order.id,
             session_id: order.id,
             name: classData.className,
-            total_students_to_serve_in_class: classData.students.length,
-            total_students_served_in_class: 0
-          })
+            total_students_to_serve_in_class: classData.students.length
+          } as any)
           .select()
           .single();
 
