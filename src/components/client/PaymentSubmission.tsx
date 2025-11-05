@@ -172,7 +172,7 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
           receipt_number: receiptNumber || null,
           receipt_image_url: receiptImageUrl,
           session_data: sessionData,
-          status: 'PENDING',
+          status: 'SUBMITTED',
           submission_time: new Date().toISOString()
         } as any)
         .select()
@@ -187,6 +187,7 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
           .insert({
             school_id: schoolData?.id || user?.id,
             order_id: order.id,
+            session_id: order.id,
             name: classData.className,
             total_students_to_serve_in_class: classData.students.length,
             total_students_served_in_class: 0
@@ -216,7 +217,7 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
 
       toast({
         title: 'Order Submitted Successfully',
-        description: `Order has been submitted and is pending admin verification`
+        description: `Order has been submitted and is awaiting admin confirmation`
       });
 
       setIsSubmitting(false);

@@ -13,12 +13,17 @@ const corsHeaders = {
 // Allowed session statuses (matches order_status enum)
 const ALLOWED_STATUSES = [
   "UNSUBMITTED",
-  "PENDING",
-  "CONFIRMED",
+  "SUBMITTED",
   "QUEUED",
-  "IN_PROGRESS",
+  "PICKUP",
+  "ONGOING",
+  "ABORTED",
+  "DONE",
+  "PACKAGING",
+  "DELIVERY",
   "COMPLETED",
-  "DELIVERED",
+  "CONFIRMED",
+  "AUTO_CONFIRMED",
 ];
 
 serve(async (req) => {
