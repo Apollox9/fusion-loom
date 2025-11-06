@@ -113,13 +113,13 @@ export default function AdminDashboard() {
 
       // Calculate stats
       const revenue = ordersData?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0;
-      const pending = ordersData?.filter(o => o.status === 'SUBMITTED' || o.status === 'QUEUED').length || 0;
+      const pendingCount = pendingData?.length || 0; // Count from pending_orders table
 
       setStats({
         totalSchools: schoolsData?.length || 0,
         totalOrders: ordersData?.length || 0,
         totalRevenue: revenue,
-        pendingOrders: pending,
+        pendingOrders: pendingCount, // Fixed: now shows pending_orders count
         totalStaff: staffData?.length || 0,
         activeAudits: 0 // TODO: fetch from audit_reports
       });
@@ -517,7 +517,7 @@ export default function AdminDashboard() {
                       <TableRow key={order.id}>
                         <TableCell className="font-medium">{order.external_ref || order.id.slice(0, 8)}</TableCell>
                         <TableCell>{order.school_name}</TableCell>
-                        <TableCell>{order.total_garments}</TableCell>
+                        <TableCell>{order.session_data?.totalStudents || order.total_students || 0}</TableCell>
                         <TableCell>{formatCurrency(order.total_amount)}</TableCell>
                         <TableCell>{getStatusBadge(order.status)}</TableCell>
                         <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>

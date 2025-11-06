@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { calculateStudentPrice, calculateSessionTotal } from '@/utils/pricing';
+import { generateOrderId } from '@/utils/orderIdGenerator';
 
 interface PaymentSubmissionProps {
   sessionData: {
@@ -149,8 +150,8 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
         receiptImageUrl = publicUrl;
       }
 
-      // Generate unique order ID
-      const orderId = `ORD-${Date.now()}`;
+      // Generate unique 10-character order ID
+      const orderId = generateOrderId();
       
       const schoolId = schoolData?.id || user?.id;
 

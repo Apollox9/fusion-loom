@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { SchoolSettings } from '@/components/client/SchoolSettings';
 import { ProfitTab } from '@/components/client/ProfitTab';
 import { ProgressTabContent } from '@/components/client/ProgressTabContent';
+import { SubmissionsTracking } from '@/components/client/SubmissionsTracking';
 
 const AnimatedCounter = ({ end, duration = 2000, prefix = "", suffix = "" }: { 
   end: number; 
@@ -317,34 +318,7 @@ export default function SchoolDashboard() {
           </TabsContent>
 
           <TabsContent value="submissions">
-            <Card>
-              <CardHeader>
-                <CardTitle>All Submissions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {sessions.length > 0 ? (
-                  <div className="space-y-4">
-                    {sessions.map((session: any) => (
-                      <div key={session.id} className="flex items-center justify-between p-4 rounded-lg border">
-                        <div className="flex-1">
-                          <p className="font-medium">Session: {session.external_ref || session.id.slice(0, 8)}</p>
-                          <p className="text-sm text-muted-foreground">Created: {new Date(session.created_at).toLocaleDateString()}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {getStatusBadge(session.status)}
-                          <Button variant="outline" size="sm"><Eye className="w-4 h-4 mr-1" />View</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <p>No submissions yet</p>
-                    <Button onClick={() => setCurrentView('upload')} className="mt-4"><Upload className="w-4 h-4 mr-2" />Upload Session</Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <SubmissionsTracking />
           </TabsContent>
 
           <TabsContent value="progress">
