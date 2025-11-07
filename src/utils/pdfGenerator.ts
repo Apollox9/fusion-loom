@@ -176,7 +176,7 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
 
   // Light Garments Section
   doc.setFontSize(12);
-  doc.text('🖤 Light Garments / Black Ink', 15, currentY);
+  doc.text('Light Garments (Use Black Ink)', 15, currentY);
   currentY += 7;
 
   // Draw color boxes for light garments
@@ -209,13 +209,13 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   currentY = rowY + boxSize + 15;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'italic');
-  doc.text('🟢 Rule of thumb: If the garment feels "soft," "light," or pastel, black ink is usually the better choice.', 15, currentY);
+  doc.text('Rule of thumb: If the garment feels "soft," "light," or pastel, black ink is usually the better choice.', 15, currentY);
   currentY += 10;
 
   // Dark Garments Section
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('⚪️ Dark Garments / White Ink', 15, currentY);
+  doc.text('Dark Garments (Use White Ink)', 15, currentY);
   currentY += 7;
 
   currentX = 15;
@@ -246,19 +246,20 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(0, 0, 0);
-  doc.text('⚪️ Rule of thumb: If the garment feels "deep," "bold," or rich in color, white ink stands out better.', 15, currentY);
+  doc.text('Rule of thumb: If the garment feels "deep," "bold," or rich in color, white ink stands out better.', 15, currentY);
   currentY += 10;
 
   // Neutral Section
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('🌓 Colors Where Both May Work', 15, currentY);
+  doc.text('Colors Where Both Inks May Work', 15, currentY);
   currentY += 7;
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   COLORS.neutral.forEach((item) => {
-    doc.text(`• ${item}`, 20, currentY);
+    const bulletPoint = '\u2022'; // Bullet character
+    doc.text(`${bulletPoint} ${item}`, 20, currentY);
     currentY += 5;
   });
 

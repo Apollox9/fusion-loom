@@ -282,8 +282,35 @@ export default function AdminDashboard() {
           throw deleteError;
         }
 
+        // Send success notification to school user
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert([{
+            title: 'Order Approved',
+            body: `Your order #${pendingOrder.order_id} has been approved and is now being processed.`,
+            target_type: 'User',
+            target_id: pendingOrder.school_id,
+            level: 'INFO',
+            channel: 'IN_APP',
+            meta: {
+              order_id: newOrder.id,
+              external_ref: pendingOrder.order_id
+            }
+          }]);
+
+        if (notificationError) {
+          console.error('Error creating notification:', notificationError);
+        }
+
         toast.success("Payment verified! Order has been approved and moved to active orders.");
       } else {
+        // Get pending order details before deletion
+        const { data: pendingOrder } = await supabase
+          .from('pending_orders')
+          .select('*')
+          .eq('id', orderId)
+          .single();
+
         // Just delete if rejected
         const { error: deleteError } = await supabase
           .from('pending_orders')
@@ -291,6 +318,28 @@ export default function AdminDashboard() {
           .eq('id', orderId);
 
         if (deleteError) throw deleteError;
+
+        // Send rejection notification to school user
+        if (pendingOrder) {
+          const { error: notificationError } = await supabase
+            .from('notifications')
+            .insert([{
+              title: 'Order Rejected',
+              body: `Your order #${pendingOrder.order_id} has been rejected. Please contact support for more details.`,
+              target_type: 'User',
+              target_id: pendingOrder.school_id,
+              level: 'ERROR',
+              channel: 'IN_APP',
+              meta: {
+                order_id: pendingOrder.order_id
+              }
+            }]);
+
+          if (notificationError) {
+            console.error('Error creating rejection notification:', notificationError);
+          }
+        }
+
         toast.success("Payment rejected and order removed.");
       }
 
