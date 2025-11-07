@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { SessionUpload } from '@/components/client/SessionUpload';
 import { SessionPreview } from '@/components/client/SessionPreview';
 import { PaymentSubmission } from '@/components/client/PaymentSubmission';
+import { SessionFormGenerator } from '@/components/client/SessionFormGenerator';
 import { formatTZS, calculateProfitByTier, getProfitTier } from '@/utils/pricing';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
@@ -64,6 +65,7 @@ export default function SchoolDashboard() {
   
   const [activeTab, setActiveTab] = useState("overview");
   const [currentView, setCurrentView] = useState<'dashboard' | 'upload' | 'preview' | 'payment'>('dashboard');
+  const [uploadTab, setUploadTab] = useState<'generate' | 'upload'>('generate');
   const [sessionData, setSessionData] = useState<any>(null);
   const [schoolData, setSchoolData] = useState<any>(null);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -170,7 +172,42 @@ export default function SchoolDashboard() {
   };
 
   if (currentView === 'upload') {
-    return <SessionUpload onComplete={handleUploadComplete} onCancel={() => setCurrentView('dashboard')} schoolName={schoolData?.name || profile?.full_name || ''} />;
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background via-accent/5 to-background p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-2xl font-bold">New Submission</h1>
+                <p className="text-muted-foreground">Generate forms or upload session files</p>
+              </div>
+              <Button variant="outline" onClick={() => setCurrentView('dashboard')}>
+                Back to Dashboard
+              </Button>
+            </div>
+            
+            <Tabs value={uploadTab} onValueChange={(v) => setUploadTab(v as 'generate' | 'upload')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="generate">Generate Session Forms</TabsTrigger>
+                <TabsTrigger value="upload">Upload Session Files</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="generate" className="mt-6">
+                <SessionFormGenerator schoolName={schoolData?.name || profile?.full_name || ''} />
+              </TabsContent>
+              
+              <TabsContent value="upload" className="mt-6">
+                <SessionUpload 
+                  onComplete={handleUploadComplete} 
+                  onCancel={() => setCurrentView('dashboard')} 
+                  schoolName={schoolData?.name || profile?.full_name || ''} 
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (currentView === 'preview') {

@@ -187,23 +187,27 @@ export default function AdminDashboard() {
 
   const handleVerifyPayment = async (orderId: string, approve: boolean) => {
     try {
-      if (approve) {
-        // Move from pending to actual orders
-        const pendingOrder = pendingOrders.find(o => o.id === orderId);
-        if (!pendingOrder) return;
+      const pendingOrder = pendingOrders.find(o => o.id === orderId);
+      if (!pendingOrder) {
+        toast.error("Order not found");
+        return;
+      }
 
-        // Create order in orders table
+      if (approve) {
+        // Create order in orders table with external_ref from pending order
         const { data: newOrder, error: orderError } = await supabase
           .from('orders')
           .insert({
             created_by_school: pendingOrder.school_id,
             created_by_user: pendingOrder.school_id,
+            external_ref: pendingOrder.order_id, // Use the generated order ID
             status: 'SUBMITTED',
-            total_students: pendingOrder.total_students,
-            total_dark_garments: pendingOrder.total_dark_garments,
-            total_light_garments: pendingOrder.total_light_garments,
-            total_amount: pendingOrder.total_amount,
-            session_data: pendingOrder.session_data,
+            total_students: pendingOrder.total_students || 0,
+            total_dark_garments: pendingOrder.total_dark_garments || 0,
+            total_light_garments: pendingOrder.total_light_garments || 0,
+            total_garments: (pendingOrder.total_dark_garments || 0) + (pendingOrder.total_light_garments || 0),
+            total_amount: pendingOrder.total_amount || 0,
+            session_data: pendingOrder.session_data || {},
             country: pendingOrder.country,
             region: pendingOrder.region,
             district: pendingOrder.district,
@@ -213,14 +217,18 @@ export default function AdminDashboard() {
             school_name: pendingOrder.school_name,
             headmaster_name: pendingOrder.headmaster_name,
             total_classes_to_serve: pendingOrder.session_data?.classes?.length || 0,
+            submission_time: new Date().toISOString()
           })
           .select()
           .single();
 
-        if (orderError) throw orderError;
+        if (orderError) {
+          console.error('Order creation error:', orderError);
+          throw orderError;
+        }
 
         // Insert classes and students from session_data
-        if (pendingOrder.session_data?.classes) {
+        if (pendingOrder.session_data?.classes && Array.isArray(pendingOrder.session_data.classes)) {
           for (const classData of pendingOrder.session_data.classes) {
             const { data: classRecord, error: classError } = await supabase
               .from('classes')
@@ -234,45 +242,62 @@ export default function AdminDashboard() {
               .select()
               .single();
 
-            if (classError) throw classError;
+            if (classError) {
+              console.error('Class creation error:', classError);
+              throw classError;
+            }
 
             // Insert students
-            if (classData.students && classData.students.length > 0) {
+            if (classData.students && Array.isArray(classData.students) && classData.students.length > 0) {
               const studentsToInsert = classData.students.map((student: any) => ({
                 school_id: pendingOrder.school_id,
                 class_id: classRecord.id,
-                full_name: student.fullName || student.studentName,
+                session_id: newOrder.id,
+                full_name: student.fullName || student.studentName || 'Unknown',
                 student_id: student.studentId || null,
-                total_dark_garment_count: student.darkGarments || student.darkCount || 0,
-                total_light_garment_count: student.lightGarments || student.lightCount || 0,
+                total_dark_garment_count: parseInt(student.darkGarments || student.darkCount || 0),
+                total_light_garment_count: parseInt(student.lightGarments || student.lightCount || 0),
               }));
 
               const { error: studentsError } = await supabase
                 .from('students')
                 .insert(studentsToInsert);
 
-              if (studentsError) throw studentsError;
+              if (studentsError) {
+                console.error('Students creation error:', studentsError);
+                throw studentsError;
+              }
             }
           }
         }
 
-        // Delete from pending
-        await supabase.from('pending_orders').delete().eq('id', orderId);
-      } else {
-        // Just delete if rejected
-        await supabase.from('pending_orders').delete().eq('id', orderId);
-      }
+        // Delete from pending only after successful creation
+        const { error: deleteError } = await supabase
+          .from('pending_orders')
+          .delete()
+          .eq('id', orderId);
 
-      if (approve) {
+        if (deleteError) {
+          console.error('Delete error:', deleteError);
+          throw deleteError;
+        }
+
         toast.success("Payment verified! Order has been approved and moved to active orders.");
       } else {
+        // Just delete if rejected
+        const { error: deleteError } = await supabase
+          .from('pending_orders')
+          .delete()
+          .eq('id', orderId);
+
+        if (deleteError) throw deleteError;
         toast.success("Payment rejected and order removed.");
       }
 
       fetchDashboardData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying payment:', error);
-      toast.error("Failed to process payment verification");
+      toast.error(`Failed to process payment verification: ${error.message || 'Unknown error'}`);
     }
   };
 
