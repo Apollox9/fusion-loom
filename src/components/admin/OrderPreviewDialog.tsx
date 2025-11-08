@@ -96,14 +96,12 @@ export function OrderPreviewDialog({ order, open, onOpenChange }: OrderPreviewDi
               )}
               {order.receipt_image_url && (
                 <div className="md:col-span-2">
-                  <a 
-                    href={order.receipt_image_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline text-sm"
-                  >
-                    View Receipt Image →
-                  </a>
+                  <span className="text-sm text-muted-foreground block mb-2">Receipt Image:</span>
+                  <img 
+                    src={order.receipt_image_url} 
+                    alt="Payment Receipt"
+                    className="max-w-full h-auto rounded-lg border border-border max-h-96 object-contain"
+                  />
                 </div>
               )}
             </div>

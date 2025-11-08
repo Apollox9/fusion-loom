@@ -489,6 +489,7 @@ export type Database = {
           total_dark_garments: number | null
           total_garments: number
           total_light_garments: number | null
+          total_students: number
           total_students_served_in_school: number
           updated_at: string
         }
@@ -529,6 +530,7 @@ export type Database = {
           total_dark_garments?: number | null
           total_garments?: number
           total_light_garments?: number | null
+          total_students?: number
           total_students_served_in_school?: number
           updated_at?: string
         }
@@ -569,6 +571,7 @@ export type Database = {
           total_dark_garments?: number | null
           total_garments?: number
           total_light_garments?: number | null
+          total_students?: number
           total_students_served_in_school?: number
           updated_at?: string
         }

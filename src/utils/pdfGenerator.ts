@@ -257,9 +257,17 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  COLORS.neutral.forEach((item) => {
-    const bulletPoint = '\u2022'; // Bullet character
-    doc.text(`${bulletPoint} ${item}`, 20, currentY);
+  const neutralItems = [
+    'Red (Bright -> black ink; Deep -> white ink)',
+    'Orange (Lighter -> black; Burnt -> white)',
+    'Medium Grey (Depends on undertone)',
+    'Turquoise / Aqua',
+    'Gold / Mustard',
+    'Khaki / Tan'
+  ];
+  
+  neutralItems.forEach((item) => {
+    doc.text('- ' + item, 20, currentY);
     currentY += 5;
   });
 
