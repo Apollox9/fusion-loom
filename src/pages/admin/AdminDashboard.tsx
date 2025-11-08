@@ -89,20 +89,72 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false });
       setSchools(schoolsData || []);
 
-      // Fetch orders
+      // Fetch orders and generate signed URLs for receipts
       const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
-      setOrders(ordersData || []);
+      
+      // Generate signed URLs for order receipts
+      if (ordersData) {
+        const ordersWithSignedUrls = await Promise.all(
+          ordersData.map(async (order) => {
+            if (order.receipt_image_url) {
+              try {
+                const pathMatch = order.receipt_image_url.match(/receipts\/(.+)$/);
+                if (pathMatch) {
+                  const { data: signedData } = await supabase.storage
+                    .from('receipts')
+                    .createSignedUrl(pathMatch[1], 31536000); // 1 year expiry
+                  if (signedData?.signedUrl) {
+                    return { ...order, receipt_image_url: signedData.signedUrl };
+                  }
+                }
+              } catch (error) {
+                console.error('Error generating signed URL for order:', error);
+              }
+            }
+            return order;
+          })
+        );
+        setOrders(ordersWithSignedUrls);
+      } else {
+        setOrders([]);
+      }
 
-      // Fetch pending orders
+      // Fetch pending orders and generate signed URLs for receipts
       const { data: pendingData } = await supabase
         .from('pending_orders')
         .select('*')
         .eq('payment_verified', false)
         .order('created_at', { ascending: false });
-      setPendingOrders(pendingData || []);
+      
+      // Generate signed URLs for pending order receipts
+      if (pendingData) {
+        const pendingWithSignedUrls = await Promise.all(
+          pendingData.map(async (order) => {
+            if (order.receipt_image_url) {
+              try {
+                const pathMatch = order.receipt_image_url.match(/receipts\/(.+)$/);
+                if (pathMatch) {
+                  const { data: signedData } = await supabase.storage
+                    .from('receipts')
+                    .createSignedUrl(pathMatch[1], 31536000); // 1 year expiry
+                  if (signedData?.signedUrl) {
+                    return { ...order, receipt_image_url: signedData.signedUrl };
+                  }
+                }
+              } catch (error) {
+                console.error('Error generating signed URL for pending order:', error);
+              }
+            }
+            return order;
+          })
+        );
+        setPendingOrders(pendingWithSignedUrls);
+      } else {
+        setPendingOrders([]);
+      }
 
       // Fetch staff
       const { data: staffData } = await supabase
@@ -194,12 +246,30 @@ export default function AdminDashboard() {
       }
 
       if (approve) {
+        // Generate signed URL for receipt image if it exists
+        let signedReceiptUrl = pendingOrder.receipt_image_url;
+        if (pendingOrder.receipt_image_url) {
+          try {
+            const pathMatch = pendingOrder.receipt_image_url.match(/receipts\/(.+)$/);
+            if (pathMatch) {
+              const { data: signedData } = await supabase.storage
+                .from('receipts')
+                .createSignedUrl(pathMatch[1], 31536000); // 1 year expiry
+              if (signedData?.signedUrl) {
+                signedReceiptUrl = signedData.signedUrl;
+              }
+            }
+          } catch (error) {
+            console.error('Error generating signed URL:', error);
+          }
+        }
+
         // Create order in orders table with external_ref from pending order
         const { data: newOrder, error: orderError } = await supabase
           .from('orders')
           .insert({
             created_by_school: pendingOrder.school_id,
-            created_by_user: pendingOrder.school_id,
+            created_by_user: null, // Set to null since we don't have user_id in pending_orders
             external_ref: pendingOrder.order_id, // Use the generated order ID
             status: 'SUBMITTED',
             total_students: pendingOrder.total_students || 0,
@@ -213,7 +283,7 @@ export default function AdminDashboard() {
             district: pendingOrder.district,
             payment_method: pendingOrder.payment_method,
             receipt_number: pendingOrder.receipt_number,
-            receipt_image_url: pendingOrder.receipt_image_url,
+            receipt_image_url: signedReceiptUrl, // Use signed URL
             school_name: pendingOrder.school_name,
             headmaster_name: pendingOrder.headmaster_name,
             total_classes_to_serve: pendingOrder.session_data?.classes?.length || 0,
