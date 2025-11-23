@@ -81,15 +81,28 @@ export default function SchoolDashboard() {
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
-    if (profile) {
+    if (user) {
       fetchSchoolData();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (schoolData) {
       fetchSessions();
     }
-  }, [profile]);
+  }, [schoolData]);
 
   const fetchSchoolData = async () => {
     try {
-      const { data } = await supabase.from('schools').select('*').limit(1).maybeSingle();
+      if (!user?.id) return;
+      
+      // Fetch school linked to this user
+      const { data } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
       if (data) setSchoolData(data);
     } catch (error) {
       console.error('Error fetching school data:', error);
@@ -98,17 +111,19 @@ export default function SchoolDashboard() {
 
   const fetchSessions = async () => {
     try {
-      // Fetch from both pending_orders and orders
+      if (!schoolData?.id) return;
+      
+      // Fetch from both pending_orders and orders using school_id
       const { data: pendingData } = await supabase
         .from('pending_orders')
         .select('*')
-        .eq('school_id', user?.id)
+        .eq('school_id', schoolData.id)
         .order('created_at', { ascending: false });
 
       const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
-        .eq('created_by_school', user?.id)
+        .eq('created_by_school', schoolData.id)
         .order('created_at', { ascending: false });
 
       // Combine and map pending orders to have status 'PENDING'
