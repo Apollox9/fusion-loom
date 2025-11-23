@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2, Edit, CreditCard } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
 
 interface PaymentMethod {
   id: string;
@@ -22,8 +24,20 @@ export default function PaymentMethodsPage() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', is_active: true });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    description: '', 
+    account_number: '',
+    account_name: '',
+    is_active: true 
+  });
   const { toast } = useToast();
+  const { profile, loading } = useAuthContext();
+
+  // Only allow admins to access this page
+  if (!loading && profile?.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
+  }
 
   useEffect(() => {
     fetchPaymentMethods();
@@ -63,6 +77,8 @@ export default function PaymentMethodsPage() {
           .update({
             name: formData.name,
             description: formData.description || null,
+            account_number: formData.account_number || null,
+            account_name: formData.account_name || null,
             is_active: formData.is_active
           })
           .eq('id', editingMethod.id);
@@ -79,6 +95,8 @@ export default function PaymentMethodsPage() {
           .insert({
             name: formData.name,
             description: formData.description || null,
+            account_number: formData.account_number || null,
+            account_name: formData.account_name || null,
             is_active: formData.is_active
           });
 
@@ -92,7 +110,7 @@ export default function PaymentMethodsPage() {
 
       setIsDialogOpen(false);
       setEditingMethod(null);
-      setFormData({ name: '', description: '', is_active: true });
+      setFormData({ name: '', description: '', account_number: '', account_name: '', is_active: true });
       fetchPaymentMethods();
     } catch (error: any) {
       toast({
@@ -103,11 +121,13 @@ export default function PaymentMethodsPage() {
     }
   };
 
-  const handleEdit = (method: PaymentMethod) => {
+  const handleEdit = (method: any) => {
     setEditingMethod(method);
     setFormData({
       name: method.name,
       description: method.description || '',
+      account_number: method.account_number || '',
+      account_name: method.account_name || '',
       is_active: method.is_active
     });
     setIsDialogOpen(true);
@@ -164,7 +184,7 @@ export default function PaymentMethodsPage() {
           </div>
           <Button onClick={() => {
             setEditingMethod(null);
-            setFormData({ name: '', description: '', is_active: true });
+            setFormData({ name: '', description: '', account_number: '', account_name: '', is_active: true });
             setIsDialogOpen(true);
           }}>
             <Plus className="w-4 h-4 mr-2" />
@@ -188,9 +208,23 @@ export default function PaymentMethodsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {method.description && (
-                  <p className="text-sm text-muted-foreground mb-4">{method.description}</p>
-                )}
+                <div className="space-y-3 mb-4">
+                  {method.description && (
+                    <p className="text-sm text-muted-foreground">{method.description}</p>
+                  )}
+                  {(method as any).account_name && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Account Name: </span>
+                      <span className="font-medium">{(method as any).account_name}</span>
+                    </div>
+                  )}
+                  {(method as any).account_number && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Account Number: </span>
+                      <span className="font-mono font-medium">{(method as any).account_number}</span>
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -239,6 +273,24 @@ export default function PaymentMethodsPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Optional description"
                   rows={3}
+                />
+              </div>
+              <div>
+                <Label htmlFor="account_name">Account Name</Label>
+                <Input
+                  id="account_name"
+                  value={formData.account_name}
+                  onChange={(e) => setFormData({ ...formData, account_name: e.target.value })}
+                  placeholder="e.g., Company Name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="account_number">Account/Phone Number</Label>
+                <Input
+                  id="account_number"
+                  value={formData.account_number}
+                  onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                  placeholder="e.g., +255 123 456 789 or Bank Account Number"
                 />
               </div>
               <div className="flex items-center justify-between">

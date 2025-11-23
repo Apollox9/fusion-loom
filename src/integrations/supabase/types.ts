@@ -587,6 +587,8 @@ export type Database = {
       }
       payment_methods: {
         Row: {
+          account_name: string | null
+          account_number: string | null
           created_at: string
           description: string | null
           id: string
@@ -595,6 +597,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_name?: string | null
+          account_number?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -603,6 +607,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_name?: string | null
+          account_number?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -784,6 +790,7 @@ export type Database = {
           total_student_count: number
           total_students_served_in_school: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           category?: string | null
@@ -807,6 +814,7 @@ export type Database = {
           total_student_count?: number
           total_students_served_in_school?: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           category?: string | null
@@ -830,6 +838,7 @@ export type Database = {
           total_student_count?: number
           total_students_served_in_school?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

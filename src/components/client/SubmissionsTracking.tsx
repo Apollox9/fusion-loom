@@ -46,8 +46,28 @@ export function SubmissionsTracking() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
+
+  // Fetch school linked to user
+  useEffect(() => {
+    const fetchSchool = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (data) setSchoolId(data.id);
+    };
+    
+    fetchSchool();
+  }, [user?.id]);
 
   useEffect(() => {
+    if (!schoolId) return;
+    
     fetchSubmissions();
     
     // Set up real-time subscription for orders
@@ -59,7 +79,7 @@ export function SubmissionsTracking() {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `created_by_school=eq.${user?.id}`
+          filter: `created_by_school=eq.${schoolId}`
         },
         () => {
           fetchSubmissions();
@@ -76,7 +96,7 @@ export function SubmissionsTracking() {
           event: '*',
           schema: 'public',
           table: 'pending_orders',
-          filter: `school_id=eq.${user?.id}`
+          filter: `school_id=eq.${schoolId}`
         },
         () => {
           fetchSubmissions();
@@ -88,24 +108,26 @@ export function SubmissionsTracking() {
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(pendingChannel);
     };
-  }, [user?.id]);
+  }, [schoolId]);
 
   const fetchSubmissions = async () => {
     try {
+      if (!schoolId) return;
+      
       setLoading(true);
       
       // Fetch pending orders
       const { data: pendingData } = await supabase
         .from('pending_orders')
         .select('*')
-        .eq('school_id', user?.id)
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 
       // Fetch confirmed orders
       const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
-        .eq('created_by_school', user?.id)
+        .eq('created_by_school', schoolId)
         .order('created_at', { ascending: false });
 
       // Combine and format

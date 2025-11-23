@@ -43,7 +43,13 @@ interface PaymentSubmissionProps {
 }
 
 export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSubmissionProps) {
-  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; name: string }>>([]);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ 
+    id: string; 
+    name: string; 
+    description: string | null;
+    account_number: string | null;
+    account_name: string | null;
+  }>>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [receiptNumber, setReceiptNumber] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -57,7 +63,7 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
     const fetchPaymentMethods = async () => {
       const { data, error } = await supabase
         .from('payment_methods')
-        .select('id, name')
+        .select('id, name, description, account_number, account_name')
         .eq('is_active', true)
         .order('name');
 
@@ -310,6 +316,61 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
                       ))}
                     </SelectContent>
                   </Select>
+                  
+                  {/* Display payment details for selected method */}
+                  {selectedPaymentMethod && paymentMethods.find(m => m.name === selectedPaymentMethod) && (
+                    <div className="mt-4 p-4 bg-accent/50 rounded-lg border border-border space-y-2">
+                      <p className="text-sm font-medium">Payment Details:</p>
+                      {(() => {
+                        const method = paymentMethods.find(m => m.name === selectedPaymentMethod);
+                        return (
+                          <>
+                            {method?.description && (
+                              <p className="text-sm text-muted-foreground">{method.description}</p>
+                            )}
+                            {method?.account_name && (
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm">Account Name:</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-sm font-medium">{method.account_name}</span>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(method.account_name || '');
+                                      toast({ title: 'Copied to clipboard' });
+                                    }}
+                                  >
+                                    Copy
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            {method?.account_number && (
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm">Account Number:</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-sm font-medium">{method.account_number}</span>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(method.account_number || '');
+                                      toast({ title: 'Copied to clipboard' });
+                                    }}
+                                  >
+                                    Copy
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 <div>
