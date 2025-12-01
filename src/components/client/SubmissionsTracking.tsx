@@ -160,17 +160,41 @@ export function SubmissionsTracking() {
         label: 'Submitted',
         description: 'Order has been approved'
       },
+      'CONFIRMED': { 
+        color: 'bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-500/30', 
+        icon: CheckCircle2,
+        label: 'Confirmed',
+        description: 'Order confirmed and ready'
+      },
+      'AUTO_CONFIRMED': { 
+        color: 'bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-500/30', 
+        icon: CheckCircle2,
+        label: 'Auto-Confirmed',
+        description: 'Automatically confirmed'
+      },
       'QUEUED': { 
         color: 'bg-purple-500/20 text-purple-800 dark:text-purple-300 border-purple-500/30', 
-        icon: Package,
+        icon: Clock,
         label: 'In Queue',
         description: 'Waiting to start production'
+      },
+      'PICKUP': { 
+        color: 'bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 border-indigo-500/30', 
+        icon: Package,
+        label: 'Ready for Pickup',
+        description: 'Preparing to start'
       },
       'ONGOING': { 
         color: 'bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 border-indigo-500/30', 
         icon: Package,
         label: 'In Progress',
         description: 'Currently printing'
+      },
+      'DONE': { 
+        color: 'bg-teal-500/20 text-teal-800 dark:text-teal-300 border-teal-500/30', 
+        icon: CheckCircle2,
+        label: 'Printing Done',
+        description: 'Printing completed'
       },
       'PACKAGING': { 
         color: 'bg-teal-500/20 text-teal-800 dark:text-teal-300 border-teal-500/30', 
@@ -202,14 +226,16 @@ export function SubmissionsTracking() {
 
   const calculateProgress = (submission: Submission) => {
     if (submission.status === 'PENDING') return 10;
-    if (submission.status === 'SUBMITTED') return 20;
+    if (submission.status === 'SUBMITTED' || submission.status === 'CONFIRMED' || submission.status === 'AUTO_CONFIRMED') return 20;
     if (submission.status === 'QUEUED') return 30;
+    if (submission.status === 'PICKUP') return 35;
     if (submission.status === 'ONGOING') {
-      // Live progress based on served students
+      // Live progress based on served students from database
       const served = submission.total_students_served_in_school || 0;
-      const total = submission.total_students || submission.session_data?.totalStudents || 1;
+      const total = submission.total_students || 1;
       return 40 + ((served / total) * 40); // 40-80% range
     }
+    if (submission.status === 'DONE') return 80;
     if (submission.status === 'PACKAGING') return 85;
     if (submission.status === 'DELIVERY') return 95;
     if (submission.status === 'COMPLETED') return 100;
@@ -219,7 +245,7 @@ export function SubmissionsTracking() {
 
   const pendingSubmissions = submissions.filter(s => s.status === 'PENDING');
   const activeSubmissions = submissions.filter(s => 
-    ['SUBMITTED', 'QUEUED', 'ONGOING', 'PACKAGING', 'DELIVERY'].includes(s.status)
+    ['SUBMITTED', 'CONFIRMED', 'AUTO_CONFIRMED', 'QUEUED', 'PICKUP', 'ONGOING', 'DONE', 'PACKAGING', 'DELIVERY'].includes(s.status)
   );
   const completedSubmissions = submissions.filter(s => 
     ['COMPLETED', 'ABORTED'].includes(s.status)
@@ -384,12 +410,12 @@ export function SubmissionsTracking() {
                     {selectedSubmission.total_light_garments || selectedSubmission.session_data?.totalLightGarments || 0}
                   </p>
                 </div>
-                {selectedSubmission.status === 'ONGOING' && (
+                {['PICKUP', 'ONGOING', 'DONE', 'PACKAGING', 'DELIVERY'].includes(selectedSubmission.status) && (
                   <>
                     <div>
                       <p className="text-sm text-muted-foreground">Students Served</p>
                       <p className="font-medium">
-                        {selectedSubmission.total_students_served_in_school || 0} / {selectedSubmission.total_students || selectedSubmission.session_data?.totalStudents || 0}
+                        {selectedSubmission.total_students_served_in_school || 0} / {selectedSubmission.total_students || 0}
                       </p>
                     </div>
                     <div>
@@ -474,24 +500,24 @@ function SubmissionCard({ submission, onViewDetails, progress, statusConfig }: S
             </div>
           </div>
 
-          {/* Live Progress for ONGOING orders */}
-          {submission.status === 'ONGOING' && (
+          {/* Live Progress for active orders */}
+          {['PICKUP', 'ONGOING', 'DONE', 'PACKAGING', 'DELIVERY'].includes(submission.status) && (
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Live Progress</span>
                 <span className="text-sm text-muted-foreground">
-                  {submission.total_students_served_in_school || 0} / {submission.total_students || submission.session_data?.totalStudents || 0} students
+                  {submission.total_students_served_in_school || 0} / {submission.total_students || 0} students
                 </span>
               </div>
               <Progress value={progress} className="h-2" />
               <p className="text-xs text-muted-foreground mt-1">
-                {Math.round(progress)}% Complete
+                {Math.round(progress)}% Complete • Classes: {submission.total_classes_served || 0}/{submission.total_classes_to_serve || 0}
               </p>
             </div>
           )}
 
           {/* Progress Bar for other statuses */}
-          {submission.status !== 'ONGOING' && (
+          {!['PICKUP', 'ONGOING', 'DONE', 'PACKAGING', 'DELIVERY'].includes(submission.status) && (
             <div>
               <Progress value={progress} className="h-2" />
               <p className="text-xs text-muted-foreground mt-1">

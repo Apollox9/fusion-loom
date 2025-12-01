@@ -137,21 +137,42 @@ export default function SchoolDashboard() {
       const all = [...pending, ...(ordersData || [])];
       setSessions(all);
 
-      // Calculate stats from actual data
-      const totalStudents = all.reduce((sum, s: any) => sum + (s.total_students || 0), 0);
-      const totalGarments = all.reduce((sum, s: any) => sum + ((s.total_dark_garments || 0) + (s.total_light_garments || 0)), 0);
-      const totalAmount = all.reduce((sum, s: any) => sum + (Number(s.total_amount) || 0), 0);
-      const completed = all.filter((s: any) => s.status === 'COMPLETED').length;
-      const inProgress = all.filter((s: any) => s.status === 'IN_PROGRESS').length;
+      // Find latest pending order OR latest non-COMPLETED order for top cards
+      const latestPending = pending[0];
+      const latestActive = ordersData?.find((o: any) => o.status !== 'COMPLETED');
+      const displaySession = latestPending || latestActive;
 
-      setStats({
-        submittedStudents: totalStudents,
-        totalStudents: totalStudents,
-        verifiedGarments: totalGarments,
-        inPrinting: inProgress,
-        completed: completed,
-        projectedProfit: totalAmount
-      });
+      if (displaySession) {
+        const sessionStudents = displaySession.total_students || 0;
+        const sessionGarments = (displaySession.total_dark_garments || 0) + (displaySession.total_light_garments || 0);
+        const sessionAmount = Number(displaySession.total_amount) || 0;
+        
+        // Calculate profit based on tier percentage
+        const profit = calculateProfitByTier(sessionStudents, sessionAmount);
+        
+        // Count active orders
+        const activeCount = ordersData?.filter((o: any) => 
+          ['QUEUED', 'PICKUP', 'ONGOING', 'PACKAGING', 'DELIVERY'].includes(o.status)
+        ).length || 0;
+
+        setStats({
+          submittedStudents: sessionStudents,
+          totalStudents: sessionStudents,
+          verifiedGarments: sessionGarments,
+          inPrinting: activeCount,
+          completed: 0,
+          projectedProfit: profit
+        });
+      } else {
+        setStats({
+          submittedStudents: 0,
+          totalStudents: 0,
+          verifiedGarments: 0,
+          inPrinting: 0,
+          completed: 0,
+          projectedProfit: 0
+        });
+      }
     } catch (error) {
       console.error('Error fetching sessions:', error);
     }
@@ -177,9 +198,17 @@ export default function SchoolDashboard() {
     const configs: Record<string, any> = {
       'UNSUBMITTED': { color: "bg-gray-500/20 text-gray-800 dark:text-gray-300", icon: Clock },
       'PENDING': { color: "bg-yellow-500/20 text-yellow-800 dark:text-yellow-300", icon: Clock },
-      'QUEUED': { color: "bg-blue-500/20 text-blue-800 dark:text-blue-300", icon: CheckCircle },
-      'IN_PROGRESS': { color: "bg-purple-500/20 text-purple-800 dark:text-purple-300", icon: Printer },
+      'SUBMITTED': { color: "bg-blue-500/20 text-blue-800 dark:text-blue-300", icon: CheckCircle },
+      'CONFIRMED': { color: "bg-blue-500/20 text-blue-800 dark:text-blue-300", icon: CheckCircle },
+      'AUTO_CONFIRMED': { color: "bg-blue-500/20 text-blue-800 dark:text-blue-300", icon: CheckCircle },
+      'QUEUED': { color: "bg-indigo-500/20 text-indigo-800 dark:text-indigo-300", icon: Clock },
+      'PICKUP': { color: "bg-purple-500/20 text-purple-800 dark:text-purple-300", icon: Printer },
+      'ONGOING': { color: "bg-purple-500/20 text-purple-800 dark:text-purple-300", icon: Printer },
+      'DONE': { color: "bg-teal-500/20 text-teal-800 dark:text-teal-300", icon: CheckCircle },
+      'PACKAGING': { color: "bg-cyan-500/20 text-cyan-800 dark:text-cyan-300", icon: CheckCircle },
+      'DELIVERY': { color: "bg-blue-500/20 text-blue-800 dark:text-blue-300", icon: Printer },
       'COMPLETED': { color: "bg-green-500/20 text-green-800 dark:text-green-300", icon: CheckCircle },
+      'ABORTED': { color: "bg-red-500/20 text-red-800 dark:text-red-300", icon: Clock },
     };
     const config = configs[status] || configs['UNSUBMITTED'];
     const Icon = config.icon;
@@ -351,13 +380,19 @@ export default function SchoolDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {['PENDING', 'QUEUED', 'IN_PROGRESS', 'COMPLETED'].map((status) => {
-                      const count = sessions.filter(s => s.status === status).length;
+                    {[
+                      { statuses: ['PENDING'], label: 'Pending', color: 'bg-yellow-500' },
+                      { statuses: ['SUBMITTED', 'CONFIRMED', 'AUTO_CONFIRMED', 'QUEUED'], label: 'Queued', color: 'bg-blue-500' },
+                      { statuses: ['PICKUP', 'ONGOING'], label: 'In Progress', color: 'bg-purple-500' },
+                      { statuses: ['DONE', 'PACKAGING', 'DELIVERY'], label: 'Processing', color: 'bg-teal-500' },
+                      { statuses: ['COMPLETED'], label: 'Completed', color: 'bg-green-500' }
+                    ].map((group) => {
+                      const count = sessions.filter(s => group.statuses.includes(s.status)).length;
                       return (
-                        <div key={status} className="flex items-center justify-between">
+                        <div key={group.label} className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <div className={`w-3 h-3 rounded-full ${status === 'PENDING' ? 'bg-yellow-500' : status === 'QUEUED' ? 'bg-blue-500' : status === 'IN_PROGRESS' ? 'bg-purple-500' : 'bg-green-500'}`}></div>
-                            <span className="capitalize">{status.toLowerCase().replace('_', ' ')}</span>
+                            <div className={`w-3 h-3 rounded-full ${group.color}`}></div>
+                            <span>{group.label}</span>
                           </div>
                           <span className="font-semibold">{count}</span>
                         </div>
