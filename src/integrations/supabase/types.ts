@@ -462,6 +462,8 @@ export type Database = {
           created_at: string
           created_by_school: string
           created_by_user: string | null
+          current_class_name: string | null
+          current_student_name: string | null
           delivery: Json | null
           device_used_mac: string | null
           district: string | null
@@ -503,6 +505,8 @@ export type Database = {
           created_at?: string
           created_by_school: string
           created_by_user?: string | null
+          current_class_name?: string | null
+          current_student_name?: string | null
           delivery?: Json | null
           device_used_mac?: string | null
           district?: string | null
@@ -544,6 +548,8 @@ export type Database = {
           created_at?: string
           created_by_school?: string
           created_by_user?: string | null
+          current_class_name?: string | null
+          current_student_name?: string | null
           delivery?: Json | null
           device_used_mac?: string | null
           district?: string | null
