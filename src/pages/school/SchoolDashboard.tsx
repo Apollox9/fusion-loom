@@ -409,7 +409,7 @@ export default function SchoolDashboard() {
           </TabsContent>
 
           <TabsContent value="progress">
-            <ProgressTabContent sessions={sessions} />
+            <ProgressTabContent sessions={sessions.filter(s => s.status === 'ONGOING')} />
           </TabsContent>
 
           <TabsContent value="profits">

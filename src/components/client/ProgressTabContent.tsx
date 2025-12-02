@@ -17,8 +17,8 @@ export const ProgressTabContent: React.FC<ProgressTabContentProps> = ({ sessions
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
-  // Find active or most recent session
-  const activeSession = sessions.find(s => s.status === 'IN_PROGRESS' || s.status === 'QUEUED') || sessions[0];
+  // Find the ONGOING order (already filtered in parent)
+  const activeSession = sessions[0];
 
   const handleViewClass = (classId: string) => {
     const sessionData = selectedSession?.session_data || activeSession?.session_data;
@@ -61,7 +61,7 @@ export const ProgressTabContent: React.FC<ProgressTabContentProps> = ({ sessions
         <CardContent>
           <div className="text-center py-12">
             <Printer className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground">No active sessions</p>
+            <p className="text-muted-foreground">No order in progress</p>
           </div>
         </CardContent>
       </Card>
