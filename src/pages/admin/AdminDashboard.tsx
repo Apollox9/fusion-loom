@@ -30,6 +30,7 @@ import {
 import { generateStaffId } from '@/utils/staffIdGenerator';
 import { formatCurrency } from '@/utils/pricing';
 import { OrderPreviewDialog } from '@/components/admin/OrderPreviewDialog';
+import { ChatPanel } from '@/components/chat/ChatPanel';
 
 export default function AdminDashboard() {
   const { user, profile, signOut } = useAuthContext();
@@ -456,12 +457,13 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="schools">Schools</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="staff">Staff</TabsTrigger>
             <TabsTrigger value="finances">Finances</TabsTrigger>
+            <TabsTrigger value="messages">Messages</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -863,6 +865,28 @@ export default function AdminDashboard() {
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Messages Tab */}
+          <TabsContent value="messages" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Messages & Conversations</CardTitle>
+                <CardDescription>Communicate with school users and staff</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {user && profile && (
+                  <div className="h-[600px] relative -m-6">
+                    <ChatPanel
+                      userId={user.id}
+                      userRole={profile.role}
+                      isMinimized={false}
+                      embedded={true}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
