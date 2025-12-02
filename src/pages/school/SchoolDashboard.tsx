@@ -32,6 +32,7 @@ import { SchoolSettings } from '@/components/client/SchoolSettings';
 import { ProfitTab } from '@/components/client/ProfitTab';
 import { ProgressTabContent } from '@/components/client/ProgressTabContent';
 import { SubmissionsTracking } from '@/components/client/SubmissionsTracking';
+import { ChatPanel } from '@/components/chat/ChatPanel';
 
 const AnimatedCounter = ({ end, duration = 2000, prefix = "", suffix = "" }: { 
   end: number; 
@@ -78,7 +79,6 @@ export default function SchoolDashboard() {
     projectedProfit: 0
   });
   const [chatOpen, setChatOpen] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -422,24 +422,15 @@ export default function SchoolDashboard() {
         </Tabs>
       </div>
 
-      <div className="fixed bottom-4 right-4 z-50">
-        {chatOpen ? (
-          <Card className="w-96 h-[500px] shadow-2xl animate-scale-in">
-            <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-primary to-blue-600">
-              <CardTitle className="text-white">Messages</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => setChatOpen(false)} className="text-white">×</Button>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="text-center py-8"><MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>No messages yet</p></div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Button onClick={() => setChatOpen(true)} className="rounded-full w-14 h-14 shadow-lg bg-gradient-to-r from-primary to-blue-600 relative">
-            <MessageSquare className="w-6 h-6" />
-            {unreadMessages > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{unreadMessages}</span>}
-          </Button>
-        )}
-      </div>
+      {user && profile && (
+        <ChatPanel
+          userId={user.id}
+          userRole={profile.role}
+          isMinimized={!chatOpen}
+          onMinimize={() => setChatOpen(!chatOpen)}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </div>
   );
 }
