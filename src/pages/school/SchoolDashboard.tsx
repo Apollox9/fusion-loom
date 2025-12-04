@@ -32,7 +32,7 @@ import { SchoolSettings } from '@/components/client/SchoolSettings';
 import { ProfitTab } from '@/components/client/ProfitTab';
 import { ProgressTabContent } from '@/components/client/ProgressTabContent';
 import { SubmissionsTracking } from '@/components/client/SubmissionsTracking';
-import { ChatPanel } from '@/components/chat/ChatPanel';
+import { SchoolChatPanel } from '@/components/chat/SchoolChatPanel';
 
 const AnimatedCounter = ({ end, duration = 2000, prefix = "", suffix = "" }: { 
   end: number; 
@@ -423,9 +423,9 @@ export default function SchoolDashboard() {
       </div>
 
       {user && profile && (
-        <ChatPanel
+        <SchoolChatPanel
           userId={user.id}
-          userRole={profile.role}
+          schoolName={schoolData?.name || profile?.full_name || 'School'}
           isMinimized={!chatOpen}
           onMinimize={() => setChatOpen(!chatOpen)}
           onClose={() => setChatOpen(false)}
