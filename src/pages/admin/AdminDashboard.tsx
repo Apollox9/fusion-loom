@@ -30,7 +30,8 @@ import {
 import { generateStaffId } from '@/utils/staffIdGenerator';
 import { formatCurrency } from '@/utils/pricing';
 import { OrderPreviewDialog } from '@/components/admin/OrderPreviewDialog';
-import { ChatPanel } from '@/components/chat/ChatPanel';
+import { AdminChatPanel } from '@/components/chat/AdminChatPanel';
+import { sendOrderApprovedMessage, sendOrderRejectedMessage } from '@/utils/chatMessages';
 
 export default function AdminDashboard() {
   const { user, profile, signOut } = useAuthContext();
@@ -60,6 +61,10 @@ export default function AdminDashboard() {
   const [staff, setStaff] = useState<any[]>([]);
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [isCreatingStaff, setIsCreatingStaff] = useState(false);
+  
+  // Loading state for payment verification
+  const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
+  const [verifyingAction, setVerifyingAction] = useState<'approve' | 'reject' | null>(null);
   const [newStaff, setNewStaff] = useState<{
     email: string;
     fullName: string;
@@ -239,12 +244,26 @@ export default function AdminDashboard() {
   };
 
   const handleVerifyPayment = async (orderId: string, approve: boolean) => {
+    setVerifyingOrderId(orderId);
+    setVerifyingAction(approve ? 'approve' : 'reject');
+    
     try {
       const pendingOrder = pendingOrders.find(o => o.id === orderId);
       if (!pendingOrder) {
         toast.error("Order not found");
+        setVerifyingOrderId(null);
+        setVerifyingAction(null);
         return;
       }
+      
+      // Get the school user_id for sending chat message
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('user_id')
+        .eq('id', pendingOrder.school_id)
+        .single();
+      
+      const schoolUserId = schoolData?.user_id;
 
       if (approve) {
         // Generate signed URL for receipt image if it exists
@@ -372,6 +391,16 @@ export default function AdminDashboard() {
         if (notificationError) {
           console.error('Error creating notification:', notificationError);
         }
+        
+        // Send chat message to school user
+        if (schoolUserId) {
+          await sendOrderApprovedMessage(
+            schoolUserId,
+            pendingOrder.school_name,
+            newOrder.id,
+            pendingOrder.order_id
+          );
+        }
 
         toast.success("Payment verified! Order has been approved and moved to active orders.");
       } else {
@@ -409,6 +438,15 @@ export default function AdminDashboard() {
           if (notificationError) {
             console.error('Error creating rejection notification:', notificationError);
           }
+          
+          // Send chat message to school user
+          if (schoolUserId) {
+            await sendOrderRejectedMessage(
+              schoolUserId,
+              pendingOrder.school_name,
+              pendingOrder.order_id
+            );
+          }
         }
 
         toast.success("Payment rejected and order removed.");
@@ -418,6 +456,9 @@ export default function AdminDashboard() {
     } catch (error: any) {
       console.error('Error verifying payment:', error);
       toast.error(`Failed to process payment verification: ${error.message || 'Unknown error'}`);
+    } finally {
+      setVerifyingOrderId(null);
+      setVerifyingAction(null);
     }
   };
 
@@ -569,17 +610,45 @@ export default function AdminDashboard() {
                                   setPreviewOrder(order);
                                   setShowPreview(true);
                                 }}
+                                disabled={verifyingOrderId === order.id}
                               >
                                 <Eye className="h-4 w-4 mr-1" />
                                 Preview
                               </Button>
-                              <Button size="sm" onClick={() => handleVerifyPayment(order.id, true)}>
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Approve
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleVerifyPayment(order.id, true)}
+                                disabled={verifyingOrderId !== null}
+                              >
+                                {verifyingOrderId === order.id && verifyingAction === 'approve' ? (
+                                  <>
+                                    <div className="h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Approving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Approve
+                                  </>
+                                )}
                               </Button>
-                              <Button size="sm" variant="destructive" onClick={() => handleVerifyPayment(order.id, false)}>
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Reject
+                              <Button 
+                                size="sm" 
+                                variant="destructive" 
+                                onClick={() => handleVerifyPayment(order.id, false)}
+                                disabled={verifyingOrderId !== null}
+                              >
+                                {verifyingOrderId === order.id && verifyingAction === 'reject' ? (
+                                  <>
+                                    <div className="h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Deleting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </>
+                                )}
                               </Button>
                             </div>
                           </TableCell>
@@ -877,15 +946,8 @@ export default function AdminDashboard() {
                 <CardDescription>Communicate with school users and staff</CardDescription>
               </CardHeader>
               <CardContent>
-                {user && profile && (
-                  <div className="h-[600px] relative -m-6">
-                    <ChatPanel
-                      userId={user.id}
-                      userRole={profile.role}
-                      isMinimized={false}
-                      embedded={true}
-                    />
-                  </div>
+                {user && (
+                  <AdminChatPanel userId={user.id} />
                 )}
               </CardContent>
             </Card>

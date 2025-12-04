@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { calculateStudentPrice, calculateSessionTotal } from '@/utils/pricing';
 import { generateOrderId } from '@/utils/orderIdGenerator';
+import { sendOrderSubmittedMessage } from '@/utils/chatMessages';
 
 interface PaymentSubmissionProps {
   sessionData: {
@@ -185,6 +186,15 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
         .single();
 
       if (orderError) throw orderError;
+
+      // Send automatic message to admin about the submission
+      if (user?.id) {
+        await sendOrderSubmittedMessage(
+          user.id,
+          sessionData.schoolName || schoolData?.name || profile?.full_name || 'School',
+          orderId
+        );
+      }
 
       toast({
         title: 'Order Submitted Successfully',
