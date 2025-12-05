@@ -1,15 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, MessageCircle, X, Search, Users, User, School, Megaphone } from 'lucide-react';
+import { Send, MessageCircle, X, Search, Users, User, School, Megaphone, Reply, Edit2, Trash2, Check, XCircle } from 'lucide-react';
 
 interface Conversation {
   id: string;
@@ -26,6 +24,9 @@ interface Message {
   sender_role: string;
   text: string;
   created_at: string;
+  edited_at: string | null;
+  reply_to: string | null;
+  is_read_by: any;
 }
 
 interface Profile {
@@ -64,6 +65,15 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  const [conversationUnreadCounts, setConversationUnreadCounts] = useState<Record<string, number>>({});
+  
+  // Reply and edit state
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editText, setEditText] = useState('');
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   
   // Broadcast state
   const [broadcastTarget, setBroadcastTarget] = useState<BroadcastTarget>('individual_school');
@@ -79,31 +89,47 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
     fetchProfiles();
     fetchSchools();
     fetchStaff();
-  }, [userId]);
+    
+    // Subscribe to all conversations for real-time updates
+    const channel = supabase
+      .channel('admin-all-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages'
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newMsg = payload.new as Message;
+            if (selectedConversation?.id === newMsg.conversation_id) {
+              setMessages(prev => [...prev, newMsg]);
+              markMessageAsRead(newMsg.id);
+            }
+            fetchConversations();
+            calculateUnreadCounts();
+          } else if (payload.eventType === 'UPDATE') {
+            if (selectedConversation) {
+              setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new as Message : m));
+            }
+          } else if (payload.eventType === 'DELETE') {
+            if (selectedConversation) {
+              setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, selectedConversation]);
 
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
-      
-      const channel = supabase
-        .channel(`admin-messages-${selectedConversation.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `conversation_id=eq.${selectedConversation.id}`
-          },
-          (payload) => {
-            setMessages(prev => [...prev, payload.new as Message]);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [selectedConversation]);
 
@@ -111,8 +137,79 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    calculateUnreadCounts();
+  }, [conversations, messages, userId]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const calculateUnreadCounts = async () => {
+    try {
+      let total = 0;
+      const counts: Record<string, number> = {};
+      
+      for (const conv of conversations) {
+        const { data: convMessages } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('conversation_id', conv.id);
+        
+        const unread = (convMessages || []).filter(m => 
+          m.sender_user_id !== userId && 
+          (!m.is_read_by || !m.is_read_by[userId])
+        ).length;
+        
+        counts[conv.id] = unread;
+        total += unread;
+      }
+      
+      setConversationUnreadCounts(counts);
+      setTotalUnreadCount(total);
+    } catch (error) {
+      console.error('Failed to calculate unread counts:', error);
+    }
+  };
+
+  const markMessageAsRead = async (messageId: string) => {
+    try {
+      const { data: msg } = await supabase
+        .from('messages')
+        .select('is_read_by')
+        .eq('id', messageId)
+        .single();
+      
+      const currentReadBy = (msg?.is_read_by as Record<string, boolean>) || {};
+      
+      await supabase
+        .from('messages')
+        .update({ 
+          is_read_by: { ...currentReadBy, [userId]: true } 
+        })
+        .eq('id', messageId);
+    } catch (error) {
+      console.error('Failed to mark message as read:', error);
+    }
+  };
+
+  const markAllMessagesAsRead = async (conversationId: string) => {
+    try {
+      const { data: unreadMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .neq('sender_user_id', userId);
+      
+      for (const msg of (unreadMessages || [])) {
+        if (!msg.is_read_by || !msg.is_read_by[userId]) {
+          await markMessageAsRead(msg.id);
+        }
+      }
+      calculateUnreadCounts();
+    } catch (error) {
+      console.error('Failed to mark all messages as read:', error);
+    }
   };
 
   const fetchConversations = async () => {
@@ -140,6 +237,9 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
 
       if (error) throw error;
       setMessages(data || []);
+      
+      // Mark all messages as read
+      markAllMessagesAsRead(conversationId);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
     }
@@ -190,14 +290,21 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
     if (!newMessage.trim() || !selectedConversation) return;
 
     try {
+      const messageData: any = {
+        conversation_id: selectedConversation.id,
+        sender_user_id: userId,
+        text: newMessage.trim(),
+        sender_role: 'ADMIN',
+        is_read_by: { [userId]: true }
+      };
+
+      if (replyingTo) {
+        messageData.reply_to = replyingTo.id;
+      }
+
       const { error } = await supabase
         .from('messages')
-        .insert([{
-          conversation_id: selectedConversation.id,
-          sender_user_id: userId,
-          text: newMessage.trim(),
-          sender_role: 'ADMIN' as const
-        }]);
+        .insert([messageData]);
 
       if (error) throw error;
 
@@ -207,6 +314,7 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
         .eq('id', selectedConversation.id);
 
       setNewMessage('');
+      setReplyingTo(null);
       fetchConversations();
     } catch (error) {
       toast({
@@ -215,6 +323,79 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
         variant: 'destructive'
       });
     }
+  };
+
+  const canEditMessage = (message: Message) => {
+    if (message.sender_user_id !== userId) return false;
+    const createdAt = new Date(message.created_at);
+    const now = new Date();
+    const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+    return diffMinutes <= 15;
+  };
+
+  const handleEditMessage = async () => {
+    if (!editingMessage || !editText.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          text: editText.trim(),
+          edited_at: new Date().toISOString()
+        })
+        .eq('id', editingMessage.id);
+
+      if (error) throw error;
+      
+      setEditingMessage(null);
+      setEditText('');
+      toast({ title: 'Message updated' });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to edit message',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteMessages = async () => {
+    if (selectedMessages.size === 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .in('id', Array.from(selectedMessages));
+
+      if (error) throw error;
+      
+      setSelectedMessages(new Set());
+      setIsSelectionMode(false);
+      toast({ title: `${selectedMessages.size} message(s) deleted` });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete messages',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const toggleSelectMessage = (messageId: string) => {
+    const newSelected = new Set(selectedMessages);
+    if (newSelected.has(messageId)) {
+      newSelected.delete(messageId);
+    } else {
+      newSelected.add(messageId);
+    }
+    setSelectedMessages(newSelected);
+  };
+
+  const getReplyPreview = (replyToId: string) => {
+    const originalMsg = messages.find(m => m.id === replyToId);
+    if (!originalMsg) return null;
+    return originalMsg.text.substring(0, 50) + (originalMsg.text.length > 50 ? '...' : '');
   };
 
   const handleBroadcast = async () => {
@@ -243,7 +424,7 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
           const school = schools.find(s => s.id === selectedSchoolId);
           if (school?.user_id) {
             targetUserIds = [school.user_id];
-            subject = `Message to ${school.name}`;
+            subject = `Support: ${school.name}`;
           }
           break;
         case 'individual_staff':
@@ -280,9 +461,16 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
         return;
       }
 
-      // Create conversations and send messages
       for (const targetUserId of targetUserIds) {
-        // Check for existing conversation
+        // For individual school, use proper subject format
+        let convSubject = subject;
+        if (broadcastTarget === 'individual_school') {
+          const school = schools.find(s => s.user_id === targetUserId);
+          if (school) {
+            convSubject = `Support: ${school.name}`;
+          }
+        }
+
         const { data: existingConv } = await supabase
           .from('conversations')
           .select('*')
@@ -297,7 +485,7 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
           const { data: newConv, error: convError } = await supabase
             .from('conversations')
             .insert({
-              subject,
+              subject: convSubject,
               participants: [userId, targetUserId],
               last_message_at: new Date().toISOString()
             })
@@ -308,19 +496,18 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
           conversationId = newConv.id;
         }
 
-        // Send message
         const { error: msgError } = await supabase
           .from('messages')
           .insert({
             conversation_id: conversationId,
             sender_user_id: userId,
             text: broadcastMessage.trim(),
-            sender_role: 'ADMIN' as const
+            sender_role: 'ADMIN',
+            is_read_by: { [userId]: true }
           });
 
         if (msgError) throw msgError;
 
-        // Update conversation last_message_at
         await supabase
           .from('conversations')
           .update({ last_message_at: new Date().toISOString() })
@@ -352,7 +539,6 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
   };
 
   const getSchoolInfo = (participantId: string) => {
-    // Find school where user_id matches
     const school = schools.find(s => s.user_id === participantId);
     return school;
   };
@@ -369,6 +555,11 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
           <h3 className="font-semibold flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
             Messages
+            {totalUnreadCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {totalUnreadCount} unread
+              </Badge>
+            )}
           </h3>
         </div>
 
@@ -470,6 +661,7 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
               {filteredConversations.map((conv) => {
                 const otherParticipant = conv.participants.find(p => p !== userId);
                 const schoolInfo = otherParticipant ? getSchoolInfo(otherParticipant) : null;
+                const unreadCount = conversationUnreadCounts[conv.id] || 0;
                 
                 return (
                   <div
@@ -481,7 +673,14 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
                     }`}
                     onClick={() => setSelectedConversation(conv)}
                   >
-                    <div className="font-medium text-sm truncate">{conv.subject || 'No Subject'}</div>
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-sm truncate">{conv.subject || 'No Subject'}</div>
+                      {unreadCount > 0 && (
+                        <Badge variant="destructive" className="text-xs h-5 min-w-5 flex items-center justify-center">
+                          {unreadCount}
+                        </Badge>
+                      )}
+                    </div>
                     {schoolInfo && (
                       <div className="text-xs text-muted-foreground mt-1">
                         <span className="font-medium">{schoolInfo.name}</span>
@@ -526,14 +725,21 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
                   return <p className="text-xs text-muted-foreground">{selectedConversation.participants.length} participants</p>;
                 })()}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSelectedConversation(null)}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                {isSelectionMode && selectedMessages.size > 0 && (
+                  <Button variant="destructive" size="icon" onClick={handleDeleteMessages} className="h-8 w-8">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedConversation(null)}
+                  className="h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <ScrollArea className="flex-1 p-4">
@@ -545,14 +751,26 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
                     <div
                       key={msg.id}
                       className={`flex ${msg.sender_user_id === userId ? 'justify-end' : 'justify-start'}`}
+                      onClick={() => isSelectionMode && msg.sender_user_id === userId && toggleSelectMessage(msg.id)}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg p-3 ${
+                        className={`max-w-[80%] rounded-lg p-3 relative group ${
                           msg.sender_user_id === userId
                             ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
+                        } ${isSelectionMode && selectedMessages.has(msg.id) ? 'ring-2 ring-destructive' : ''}`}
                       >
+                        {msg.reply_to && (
+                          <div className={`text-xs mb-1 p-1 rounded border-l-2 ${
+                            msg.sender_user_id === userId 
+                              ? 'bg-primary-foreground/10 border-primary-foreground/50' 
+                              : 'bg-slate-200 dark:bg-slate-700 border-slate-400'
+                          }`}>
+                            <Reply className="h-3 w-3 inline mr-1" />
+                            {getReplyPreview(msg.reply_to)}
+                          </div>
+                        )}
+                        
                         {msg.sender_user_id !== userId && (
                           <div className="text-xs opacity-70 mb-1">
                             <span className="font-medium">{getProfileName(msg.sender_user_id)}</span>
@@ -563,9 +781,76 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
                             )}
                           </div>
                         )}
-                        <p className="text-sm break-words">{msg.text}</p>
-                        <div className="text-xs opacity-70 mt-1">
-                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        
+                        {editingMessage?.id === msg.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              className="h-7 text-sm bg-background text-foreground"
+                            />
+                            <div className="flex gap-1">
+                              <Button size="icon" className="h-6 w-6" onClick={handleEditMessage}>
+                                <Check className="h-3 w-3" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingMessage(null)}>
+                                <XCircle className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm break-words whitespace-pre-wrap">{msg.text}</p>
+                        )}
+                        
+                        <div className="flex items-center justify-between mt-1">
+                          <div className="text-xs opacity-70">
+                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {msg.edited_at && <span className="ml-1">(edited)</span>}
+                          </div>
+                          
+                          {!editingMessage && !isSelectionMode && (
+                            <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReplyingTo(msg);
+                                }}
+                              >
+                                <Reply className="h-3 w-3" />
+                              </Button>
+                              {canEditMessage(msg) && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingMessage(msg);
+                                      setEditText(msg.text);
+                                    }}
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setIsSelectionMode(true);
+                                      setSelectedMessages(new Set([msg.id]));
+                                    }}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -574,6 +859,18 @@ export function AdminChatPanel({ userId }: AdminChatPanelProps) {
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
+
+            {replyingTo && (
+              <div className="px-4 py-2 border-t bg-muted/50 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Reply className="h-3 w-3" />
+                  <span>Replying to: {replyingTo.text.substring(0, 40)}...</span>
+                </div>
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setReplyingTo(null)}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
 
             <div className="border-t p-4">
               <div className="flex gap-2">
