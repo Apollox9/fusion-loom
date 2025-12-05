@@ -313,8 +313,10 @@ export type Database = {
           attachments: Json | null
           conversation_id: string
           created_at: string
+          edited_at: string | null
           id: string
           is_read_by: Json | null
+          reply_to: string | null
           sender_role: Database["public"]["Enums"]["user_role"] | null
           sender_user_id: string | null
           text: string
@@ -323,8 +325,10 @@ export type Database = {
           attachments?: Json | null
           conversation_id: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           is_read_by?: Json | null
+          reply_to?: string | null
           sender_role?: Database["public"]["Enums"]["user_role"] | null
           sender_user_id?: string | null
           text: string
@@ -333,8 +337,10 @@ export type Database = {
           attachments?: Json | null
           conversation_id?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           is_read_by?: Json | null
+          reply_to?: string | null
           sender_role?: Database["public"]["Enums"]["user_role"] | null
           sender_user_id?: string | null
           text?: string
@@ -345,6 +351,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_fkey"
+            columns: ["reply_to"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]

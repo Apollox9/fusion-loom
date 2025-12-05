@@ -59,7 +59,8 @@ export async function sendOrderSubmittedMessage(
         conversation_id: conversationId,
         sender_user_id: schoolUserId,
         text: message,
-        sender_role: 'SCHOOL_USER' as const
+        sender_role: 'SCHOOL_USER' as const,
+        is_read_by: { [schoolUserId]: true }
       });
 
     if (msgError) {
@@ -138,7 +139,8 @@ export async function sendOrderApprovedMessage(
         conversation_id: conversationId,
         sender_user_id: adminProfile.id,
         text: message,
-        sender_role: 'ADMIN' as const
+        sender_role: 'ADMIN' as const,
+        is_read_by: { [adminProfile.id]: true }
       });
 
     if (msgError) {
@@ -216,7 +218,8 @@ export async function sendOrderRejectedMessage(
         conversation_id: conversationId,
         sender_user_id: adminProfile.id,
         text: message,
-        sender_role: 'ADMIN' as const
+        sender_role: 'ADMIN' as const,
+        is_read_by: { [adminProfile.id]: true }
       });
 
     if (msgError) {
@@ -231,5 +234,95 @@ export async function sendOrderRejectedMessage(
 
   } catch (error) {
     console.error('Error sending order rejected message:', error);
+  }
+}
+
+// Send automatic message when order status changes
+export async function sendOrderStatusUpdateMessage(
+  schoolUserId: string,
+  schoolName: string,
+  orderId: string,
+  newStatus: string
+) {
+  try {
+    // Find admin user
+    const { data: adminProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'ADMIN')
+      .limit(1)
+      .single();
+
+    if (!adminProfile) {
+      console.error('No admin found');
+      return;
+    }
+
+    // Find or create conversation
+    const { data: existingConv } = await supabase
+      .from('conversations')
+      .select('*')
+      .contains('participants', [schoolUserId, adminProfile.id])
+      .maybeSingle();
+
+    let conversationId: string;
+
+    if (existingConv) {
+      conversationId = existingConv.id;
+    } else {
+      const { data: newConv, error } = await supabase
+        .from('conversations')
+        .insert({
+          subject: `Support: ${schoolName}`,
+          participants: [schoolUserId, adminProfile.id],
+          last_message_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error || !newConv) {
+        console.error('Failed to create conversation:', error);
+        return;
+      }
+      conversationId = newConv.id;
+    }
+
+    // Generate message based on status
+    const statusMessages: Record<string, string> = {
+      'QUEUED': `📋 Order Update\n\nDear ${schoolName},\n\nYour order (${orderId}) has been queued for processing.\n\nYou will be notified when our team is ready to pick up your garments.`,
+      'PICKUP': `🚗 Pickup Scheduled\n\nDear ${schoolName},\n\nOur team is on the way to pick up garments for order ${orderId}.\n\nPlease ensure all garments are ready for collection.`,
+      'ONGOING': `🖨️ Printing In Progress\n\nDear ${schoolName},\n\nGreat news! Printing has started for your order (${orderId}).\n\nYou can track the progress in your dashboard.`,
+      'DONE': `✅ Printing Complete\n\nDear ${schoolName},\n\nPrinting has been completed for your order (${orderId}).\n\nYour garments are now being prepared for packaging.`,
+      'PACKAGING': `📦 Packaging\n\nDear ${schoolName},\n\nYour order (${orderId}) is currently being packaged.\n\nSoon it will be ready for delivery.`,
+      'DELIVERY': `🚚 Out for Delivery\n\nDear ${schoolName},\n\nYour order (${orderId}) is on its way!\n\nOur team will deliver it to your school shortly.`,
+      'COMPLETED': `🎉 Order Completed!\n\nDear ${schoolName},\n\nYour order (${orderId}) has been completed and delivered.\n\nThank you for choosing Project Fusion!`,
+      'ABORTED': `⚠️ Order Aborted\n\nDear ${schoolName},\n\nUnfortunately, your order (${orderId}) has been aborted.\n\nPlease contact support for more information.`
+    };
+
+    const message = statusMessages[newStatus];
+    if (!message) return;
+
+    const { error: msgError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_user_id: adminProfile.id,
+        text: message,
+        sender_role: 'ADMIN' as const,
+        is_read_by: { [adminProfile.id]: true }
+      });
+
+    if (msgError) {
+      console.error('Failed to send status update message:', msgError);
+    }
+
+    // Update conversation timestamp
+    await supabase
+      .from('conversations')
+      .update({ last_message_at: new Date().toISOString() })
+      .eq('id', conversationId);
+
+  } catch (error) {
+    console.error('Error sending order status update message:', error);
   }
 }
