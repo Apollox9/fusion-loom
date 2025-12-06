@@ -32,6 +32,7 @@ import { formatCurrency } from '@/utils/pricing';
 import { OrderPreviewDialog } from '@/components/admin/OrderPreviewDialog';
 import { AdminChatPanel } from '@/components/chat/AdminChatPanel';
 import { sendOrderApprovedMessage, sendOrderRejectedMessage } from '@/utils/chatMessages';
+import { FinancesTab } from '@/components/finances/FinancesTab';
 
 export default function AdminDashboard() {
   const { user, profile, signOut } = useAuthContext();
@@ -874,68 +875,7 @@ export default function AdminDashboard() {
 
           {/* Finances Tab */}
           <TabsContent value="finances" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Revenue</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
-                  <p className="text-sm text-muted-foreground mt-2">All time earnings</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>This Month</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{formatCurrency(0)}</div>
-                  <p className="text-sm text-muted-foreground mt-2">Current month revenue</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pending Payments</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{pendingOrders.length}</div>
-                  <p className="text-sm text-muted-foreground mt-2">Awaiting verification</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Transactions</CardTitle>
-                <CardDescription>Latest payment activities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>School</TableHead>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.slice(0, 10).map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>{order.school_name}</TableCell>
-                        <TableCell className="font-medium">{order.external_ref || order.id.slice(0, 8)}</TableCell>
-                        <TableCell>{formatCurrency(order.total_amount)}</TableCell>
-                        <TableCell>{getStatusBadge(order.status)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <FinancesTab />
           </TabsContent>
 
           {/* Messages Tab */}
