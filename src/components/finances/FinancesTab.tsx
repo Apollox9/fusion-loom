@@ -3,11 +3,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TransactionsList } from './TransactionsList';
 import { CashflowChart } from './CashflowChart';
 import { OrderConfirmation } from './OrderConfirmation';
+import { PaymentMethodsManagement } from './PaymentMethodsManagement';
 import { 
   DollarSign, 
   TrendingUp, 
   Receipt, 
-  CheckCircle
+  CheckCircle,
+  CreditCard
 } from 'lucide-react';
 
 export function FinancesTab() {
@@ -77,7 +79,7 @@ export function FinancesTab() {
 
       {/* Main Finance Tabs */}
       <Tabs defaultValue="transactions" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
           <TabsTrigger value="transactions" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
             Transactions
@@ -89,6 +91,10 @@ export function FinancesTab() {
           <TabsTrigger value="orders" className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4" />
             Order Confirmation
+          </TabsTrigger>
+          <TabsTrigger value="payment-methods" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Payment Methods
           </TabsTrigger>
         </TabsList>
 
@@ -102,6 +108,10 @@ export function FinancesTab() {
 
         <TabsContent value="orders" className="space-y-6">
           <OrderConfirmation />
+        </TabsContent>
+
+        <TabsContent value="payment-methods" className="space-y-6">
+          <PaymentMethodsManagement />
         </TabsContent>
       </Tabs>
     </div>
