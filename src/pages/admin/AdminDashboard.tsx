@@ -33,6 +33,7 @@ import { OrderPreviewDialog } from '@/components/admin/OrderPreviewDialog';
 import { AdminChatPanel } from '@/components/chat/AdminChatPanel';
 import { sendOrderApprovedMessage, sendOrderRejectedMessage } from '@/utils/chatMessages';
 import { FinancesTab } from '@/components/finances/FinancesTab';
+import { OrdersTabContent } from '@/components/admin/OrdersTabContent';
 
 export default function AdminDashboard() {
   const { user, profile, signOut } = useAuthContext();
@@ -711,38 +712,11 @@ export default function AdminDashboard() {
 
           {/* Orders Tab */}
           <TabsContent value="orders" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>All Orders</CardTitle>
-                <CardDescription>View and manage all school orders</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>School</TableHead>
-                      <TableHead>Students</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.external_ref || order.id.slice(0, 8)}</TableCell>
-                        <TableCell>{order.school_name}</TableCell>
-                        <TableCell>{order.session_data?.totalStudents || order.total_students || 0}</TableCell>
-                        <TableCell>{formatCurrency(order.total_amount)}</TableCell>
-                        <TableCell>{getStatusBadge(order.status)}</TableCell>
-                        <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <OrdersTabContent 
+              orders={orders} 
+              getStatusBadge={getStatusBadge}
+              formatCurrency={formatCurrency}
+            />
           </TabsContent>
 
           {/* Staff Tab */}
