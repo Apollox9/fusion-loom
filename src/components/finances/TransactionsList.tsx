@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,78 +10,111 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowUpRight, ArrowDownRight, Eye } from 'lucide-react';
+import { ArrowUpRight, Eye, FileDown, BarChart3 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { formatTZS } from '@/utils/pricing';
+import { toast } from 'sonner';
+
+interface Order {
+  id: string;
+  external_ref: string | null;
+  school_name: string | null;
+  total_amount: number | null;
+  status: string;
+  created_at: string;
+  payment_method: string | null;
+}
 
 export function TransactionsList() {
-  // Mock transaction data
-  const transactions = [
-    {
-      id: 'TXN-001',
-      type: 'income',
-      amount: 1250.00,
-      description: 'Order payment - Mwanza Secondary',
-      date: '2024-01-15',
-      status: 'completed',
-      reference: 'ORD-1001'
-    },
-    {
-      id: 'TXN-002',
-      type: 'expense',
-      amount: 450.00,
-      description: 'Material procurement',
-      date: '2024-01-14',
-      status: 'completed',
-      reference: 'EXP-2001'
-    },
-    {
-      id: 'TXN-003',
-      type: 'income',
-      amount: 890.50,
-      description: 'Order payment - Dar es Salaam High',
-      date: '2024-01-14',
-      status: 'pending',
-      reference: 'ORD-1002'
-    },
-    {
-      id: 'TXN-004',
-      type: 'expense',
-      amount: 120.00,
-      description: 'Machine maintenance',
-      date: '2024-01-13',
-      status: 'completed',
-      reference: 'MNT-3001'
-    },
-    {
-      id: 'TXN-005',
-      type: 'income',
-      amount: 2100.00,
-      description: 'Bulk order payment - Arusha Academy',
-      date: '2024-01-12',
-      status: 'completed',
-      reference: 'ORD-1003'
+  const [transactions, setTransactions] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalIncome, setTotalIncome] = useState(0);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, external_ref, school_name, total_amount, status, created_at, payment_method')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      setTransactions(data || []);
+      
+      // Calculate total income from all orders
+      const total = (data || []).reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
+      setTotalIncome(total);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast.error('Failed to load transactions');
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'COMPLETED':
+      case 'CONFIRMED':
+      case 'AUTO_CONFIRMED':
         return 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30';
-      case 'pending':
+      case 'ONGOING':
+      case 'PICKUP':
+      case 'PACKAGING':
+      case 'DELIVERY':
+        return 'bg-blue-500/20 text-blue-700 border-blue-500/30';
+      case 'SUBMITTED':
+      case 'QUEUED':
         return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30';
-      case 'failed':
+      case 'ABORTED':
         return 'bg-red-500/20 text-red-700 border-red-500/30';
       default:
         return 'bg-muted text-muted-foreground';
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    return type === 'income' ? (
-      <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-    ) : (
-      <ArrowDownRight className="h-4 w-4 text-red-500" />
-    );
+  const handleExportTransactions = () => {
+    if (transactions.length === 0) {
+      toast.error('No transactions to export');
+      return;
+    }
+
+    const csvContent = [
+      ['Date', 'Order ID', 'School', 'Amount (TZS)', 'Status', 'Payment Method'].join(','),
+      ...transactions.map(t => [
+        new Date(t.created_at).toLocaleDateString(),
+        t.external_ref || t.id.slice(0, 8),
+        `"${t.school_name || 'N/A'}"`,
+        t.total_amount || 0,
+        t.status,
+        t.payment_method || 'N/A'
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Transactions exported successfully');
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -89,57 +123,63 @@ export function TransactionsList() {
         <Card className="bg-gradient-card border-border/50 shadow-card">
           <CardHeader>
             <CardTitle className="text-xl font-bold gradient-text">Recent Transactions</CardTitle>
-            <CardDescription>All financial activities in the system</CardDescription>
+            <CardDescription>All financial activities from orders</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.map((transaction) => (
-                  <TableRow key={transaction.id} className="hover:bg-accent/50 transition-colors">
-                    <TableCell className="flex items-center gap-2">
-                      {getTypeIcon(transaction.type)}
-                      <span className="capitalize font-medium">{transaction.type}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{transaction.description}</p>
-                        <p className="text-sm text-muted-foreground">Ref: {transaction.reference}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`font-bold ${
-                        transaction.type === 'income' ? 'text-emerald-500' : 'text-red-500'
-                      }`}>
-                        {transaction.type === 'income' ? '+' : '-'}${transaction.amount.toFixed(2)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(transaction.status)}>
-                        {transaction.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(transaction.date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+            {transactions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No transactions found
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((transaction) => (
+                    <TableRow key={transaction.id} className="hover:bg-accent/50 transition-colors">
+                      <TableCell className="flex items-center gap-2">
+                        <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+                        <span className="capitalize font-medium">Income</span>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{transaction.school_name || 'Unknown School'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Ref: {transaction.external_ref || transaction.id.slice(0, 8)}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-bold text-emerald-500">
+                          +{formatTZS(transaction.total_amount || 0)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(transaction.status)}>
+                          {transaction.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(transaction.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -149,7 +189,7 @@ export function TransactionsList() {
         <Card className="bg-gradient-card border-border/50 shadow-card hover-lift">
           <CardHeader>
             <CardTitle className="text-lg font-bold gradient-text">Transaction Summary</CardTitle>
-            <CardDescription>Today's financial overview</CardDescription>
+            <CardDescription>Financial overview</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
@@ -157,20 +197,12 @@ export function TransactionsList() {
                 <ArrowUpRight className="h-4 w-4 text-emerald-500" />
                 <span className="font-medium">Total Income</span>
               </div>
-              <span className="font-bold text-emerald-500">+$4,240.50</span>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-              <div className="flex items-center gap-2">
-                <ArrowDownRight className="h-4 w-4 text-red-500" />
-                <span className="font-medium">Total Expenses</span>
-              </div>
-              <span className="font-bold text-red-500">-$570.00</span>
+              <span className="font-bold text-emerald-500">{formatTZS(totalIncome)}</span>
             </div>
             
             <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
-              <span className="font-medium">Net Balance</span>
-              <span className="font-bold text-primary">+$3,670.50</span>
+              <span className="font-medium">Total Transactions</span>
+              <span className="font-bold text-primary">{transactions.length}</span>
             </div>
           </CardContent>
         </Card>
@@ -180,14 +212,20 @@ export function TransactionsList() {
             <CardTitle className="text-lg font-bold gradient-text">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button className="w-full bg-gradient-hero text-white shadow-primary hover:shadow-electric transition-all duration-300">
+            <Button 
+              className="w-full bg-gradient-hero text-white shadow-primary hover:shadow-electric transition-all duration-300"
+              onClick={handleExportTransactions}
+            >
+              <FileDown className="h-4 w-4 mr-2" />
               Export Transactions
             </Button>
-            <Button variant="outline" className="w-full border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground">
+            <Button 
+              variant="outline" 
+              className="w-full border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+              onClick={() => toast.info('Report generation coming soon')}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
               Generate Report
-            </Button>
-            <Button variant="outline" className="w-full border-electric-blue/30 text-electric-blue hover:bg-electric-blue hover:text-white">
-              View Analytics
             </Button>
           </CardContent>
         </Card>
