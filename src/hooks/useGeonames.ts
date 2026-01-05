@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const GEONAMES_USERNAME = "apollo_x9"; // Using demo account - in production, use your own
+const GEONAMES_USERNAME = "apollo_x9"; // using real account
 
 interface Country {
   geonameId: number;
