@@ -391,7 +391,7 @@ export function SubmissionsTracking() {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Students</p>
                   <p className="font-medium">
-                    {selectedSubmission.total_students || selectedSubmission.session_data?.totalStudents || 0}
+                    {selectedSubmission.total_students || 0}
                   </p>
                 </div>
                 <div>
@@ -401,13 +401,13 @@ export function SubmissionsTracking() {
                 <div>
                   <p className="text-sm text-muted-foreground">Dark Garments</p>
                   <p className="font-medium">
-                    {selectedSubmission.total_dark_garments || selectedSubmission.session_data?.totalDarkGarments || 0}
+                    {selectedSubmission.total_dark_garments || 0}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Light Garments</p>
                   <p className="font-medium">
-                    {selectedSubmission.total_light_garments || selectedSubmission.session_data?.totalLightGarments || 0}
+                    {selectedSubmission.total_light_garments || 0}
                   </p>
                 </div>
                 {['PICKUP', 'ONGOING', 'DONE', 'PACKAGING', 'DELIVERY'].includes(selectedSubmission.status) && (
@@ -480,7 +480,7 @@ function SubmissionCard({ submission, onViewDetails, progress, statusConfig }: S
                 <span>Students</span>
               </div>
               <p className="font-medium">
-                {submission.total_students || submission.session_data?.totalStudents || 0}
+                {submission.total_students || 0}
               </p>
             </div>
             <div>

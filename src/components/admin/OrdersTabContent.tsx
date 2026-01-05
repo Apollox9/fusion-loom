@@ -324,7 +324,7 @@ export function OrdersTabContent({ orders, getStatusBadge, formatCurrency }: Ord
                       </div>
                     </TableCell>
                     <TableCell>
-                      {order.session_data?.totalStudents || order.total_students || 0}
+                      {order.total_students || 0}
                     </TableCell>
                     <TableCell className="font-semibold text-primary">
                       {formatTZS(order.total_amount || 0)}

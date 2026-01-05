@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { LocationPhoneFields } from '@/components/auth/LocationPhoneFields';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -16,6 +17,15 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<string>('SCHOOL_USER');
+  
+  // Location fields
+  const [country, setCountry] = useState('');
+  const [countryCode, setCountryCode] = useState('');
+  const [region, setRegion] = useState('');
+  const [district, setDistrict] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [displayPhone, setDisplayPhone] = useState('');
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -55,6 +65,19 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate school user specific fields
+    if (role === 'SCHOOL_USER') {
+      if (!country || !region || !district || !phoneNumber) {
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all location and phone fields.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     setIsLoading(true);
 
     try {
@@ -68,6 +91,11 @@ const Auth = () => {
           data: {
             full_name: fullName,
             role: role,
+            country: country,
+            country_code: countryCode,
+            region: region,
+            district: district,
+            phone_number: phoneNumber,
           }
         }
       });
@@ -93,6 +121,16 @@ const Auth = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCountryChange = (countryName: string, code: string) => {
+    setCountry(countryName);
+    setCountryCode(code);
+  };
+
+  const handlePhoneChange = (formatted: string, full: string) => {
+    setDisplayPhone(formatted);
+    setPhoneNumber(full);
   };
 
   return (
@@ -197,6 +235,23 @@ const Auth = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {/* Location and Phone Fields for School Users */}
+                {role === 'SCHOOL_USER' && (
+                  <div className="border-t pt-4 mt-4">
+                    <p className="text-sm text-muted-foreground mb-4">School Location & Contact</p>
+                    <LocationPhoneFields
+                      country={country}
+                      region={region}
+                      district={district}
+                      phoneNumber={phoneNumber}
+                      onCountryChange={handleCountryChange}
+                      onRegionChange={setRegion}
+                      onDistrictChange={setDistrict}
+                      onPhoneChange={handlePhoneChange}
+                    />
+                  </div>
+                )}
                 
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -34,6 +34,8 @@ import { AdminChatPanel } from '@/components/chat/AdminChatPanel';
 import { sendOrderApprovedMessage, sendOrderRejectedMessage } from '@/utils/chatMessages';
 import { FinancesTab } from '@/components/finances/FinancesTab';
 import { OrdersTabContent } from '@/components/admin/OrdersTabContent';
+import { DemoRequestsTab } from '@/components/admin/DemoRequestsTab';
+import { GuestMessagesTab } from '@/components/admin/GuestMessagesTab';
 
 export default function AdminDashboard() {
   const { user, profile, signOut } = useAuthContext();
@@ -500,12 +502,14 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-8 lg:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="schools">Schools</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="staff">Staff</TabsTrigger>
             <TabsTrigger value="finances">Finances</TabsTrigger>
+            <TabsTrigger value="demo-requests">Demo Requests</TabsTrigger>
+            <TabsTrigger value="guest-messages">Guest Messages</TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
           </TabsList>
 
@@ -850,6 +854,16 @@ export default function AdminDashboard() {
           {/* Finances Tab */}
           <TabsContent value="finances" className="space-y-4">
             <FinancesTab />
+          </TabsContent>
+
+          {/* Demo Requests Tab */}
+          <TabsContent value="demo-requests" className="space-y-4">
+            <DemoRequestsTab />
+          </TabsContent>
+
+          {/* Guest Messages Tab */}
+          <TabsContent value="guest-messages" className="space-y-4">
+            <GuestMessagesTab />
           </TabsContent>
 
           {/* Messages Tab */}

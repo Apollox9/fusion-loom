@@ -225,6 +225,81 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_requests: {
+        Row: {
+          created_at: string
+          email: string
+          headmaster_name: string
+          id: string
+          is_read: boolean
+          location: string
+          message: string | null
+          phone: string
+          preferred_date: string
+          school_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          headmaster_name: string
+          id?: string
+          is_read?: boolean
+          location: string
+          message?: string | null
+          phone: string
+          preferred_date: string
+          school_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          headmaster_name?: string
+          id?: string
+          is_read?: boolean
+          location?: string
+          message?: string | null
+          phone?: string
+          preferred_date?: string
+          school_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      guest_messages: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_read: boolean
+          message: string
+          name: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_read?: boolean
+          message: string
+          name: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          name?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       machine_locations: {
         Row: {
           created_at: string
