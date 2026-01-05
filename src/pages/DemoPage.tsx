@@ -4,12 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Calendar, CheckCircle, MapPin, Phone, Mail, User, School } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle, MapPin, Phone, Mail, User, School, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/integrations/supabase/client';
 
 const DemoPage = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     schoolName: '',
     location: '',
@@ -21,7 +23,7 @@ const DemoPage = () => {
   });
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
@@ -34,14 +36,40 @@ const DemoPage = () => {
       return;
     }
 
-    // Submit form (in real app, this would go to a backend)
-    console.log('Demo request submitted:', formData);
-    setIsSubmitted(true);
-    
-    toast({
-      title: "Demo Request Submitted!",
-      description: "We'll contact you soon to schedule your demo."
-    });
+    setIsLoading(true);
+
+    try {
+      // Save to database
+      const { error } = await supabase
+        .from('demo_requests')
+        .insert({
+          school_name: formData.schoolName,
+          location: formData.location,
+          headmaster_name: formData.headmasterName,
+          email: formData.email,
+          phone: formData.phone,
+          preferred_date: formData.preferredDate,
+          message: formData.message || null
+        });
+
+      if (error) throw error;
+
+      setIsSubmitted(true);
+      
+      toast({
+        title: "Demo Request Submitted!",
+        description: "We'll contact you soon to schedule your demo."
+      });
+    } catch (error) {
+      console.error('Error submitting demo request:', error);
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your request. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -297,7 +325,9 @@ const DemoPage = () => {
                   type="submit" 
                   size="lg" 
                   className="w-full bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all duration-300"
+                  disabled={isLoading}
                 >
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Submit Demo Request
                 </Button>
               </form>

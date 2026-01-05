@@ -4,12 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Mail, Phone, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Clock, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/integrations/supabase/client';
 
 const ContactPage = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,7 +20,7 @@ const ContactPage = () => {
   });
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
@@ -30,14 +32,37 @@ const ContactPage = () => {
       return;
     }
 
-    // Submit form (in real app, this would go to a backend)
-    console.log('Contact form submitted:', formData);
-    setIsSubmitted(true);
-    
-    toast({
-      title: "Message Sent!",
-      description: "We'll get back to you within 24 hours."
-    });
+    setIsLoading(true);
+
+    try {
+      // Save to database
+      const { error } = await supabase
+        .from('guest_messages')
+        .insert({
+          name: formData.name,
+          email: formData.email,
+          subject: formData.subject,
+          message: formData.message
+        });
+
+      if (error) throw error;
+
+      setIsSubmitted(true);
+      
+      toast({
+        title: "Message Sent!",
+        description: "We'll get back to you within 24 hours."
+      });
+    } catch (error) {
+      console.error('Error submitting message:', error);
+      toast({
+        title: "Submission Failed",
+        description: "There was an error sending your message. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -271,8 +296,13 @@ const ContactPage = () => {
                     type="submit" 
                     size="lg" 
                     className="w-full bg-gradient-hero hover:shadow-lg transition-all duration-300"
+                    disabled={isLoading}
                   >
-                    <Send className="w-4 h-4 mr-2" />
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
                     Send Message
                   </Button>
                 </form>
