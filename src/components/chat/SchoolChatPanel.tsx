@@ -135,28 +135,50 @@ export function SchoolChatPanel({ userId, schoolName, isMinimized = false, onMin
 
   const initializeConversation = async () => {
     try {
-      const { data: adminProfile } = await supabase
+      // Get admin profile
+      const { data: adminProfile, error: adminError } = await supabase
         .from('profiles')
         .select('id')
         .eq('role', 'ADMIN')
         .limit(1)
-        .single();
+        .maybeSingle();
+
+      if (adminError) {
+        console.error('Failed to fetch admin profile:', adminError);
+        return;
+      }
 
       if (adminProfile) {
         setAdminId(adminProfile.id);
+      } else {
+        console.error('No admin profile found');
+        return;
       }
 
-      const { data: existingConv } = await supabase
+      // Find any existing conversation where this user is a participant
+      const { data: existingConversations, error: convError } = await supabase
         .from('conversations')
         .select('*')
         .contains('participants', [userId])
-        .eq('subject', `Support: ${schoolName}`)
-        .maybeSingle();
+        .order('last_message_at', { ascending: false });
+
+      if (convError) {
+        console.error('Failed to fetch conversations:', convError);
+        return;
+      }
+
+      // Find a conversation that includes the admin
+      const existingConv = existingConversations?.find(conv => 
+        conv.participants.includes(adminProfile.id)
+      );
 
       if (existingConv) {
+        console.log('Found existing conversation:', existingConv.id);
         setConversationId(existingConv.id);
-      } else if (adminProfile) {
-        const { data: newConv, error } = await supabase
+      } else {
+        // Create new conversation with admin
+        console.log('Creating new conversation with admin');
+        const { data: newConv, error: createError } = await supabase
           .from('conversations')
           .insert({
             subject: `Support: ${schoolName}`,
@@ -166,7 +188,13 @@ export function SchoolChatPanel({ userId, schoolName, isMinimized = false, onMin
           .select()
           .single();
 
-        if (!error && newConv) {
+        if (createError) {
+          console.error('Failed to create conversation:', createError);
+          return;
+        }
+
+        if (newConv) {
+          console.log('Created new conversation:', newConv.id);
           setConversationId(newConv.id);
         }
       }
@@ -193,7 +221,22 @@ export function SchoolChatPanel({ userId, schoolName, isMinimized = false, onMin
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !conversationId) return;
+    if (!newMessage.trim()) {
+      console.log('Message is empty, not sending');
+      return;
+    }
+    
+    if (!conversationId) {
+      console.error('No conversation ID available');
+      toast({
+        title: 'Error',
+        description: 'Chat not initialized. Please try refreshing the page.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    console.log('Sending message:', { conversationId, userId, text: newMessage.trim() });
 
     try {
       const messageData: any = {
@@ -208,16 +251,27 @@ export function SchoolChatPanel({ userId, schoolName, isMinimized = false, onMin
         messageData.reply_to = replyingTo.id;
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('messages')
-        .insert([messageData]);
+        .insert([messageData])
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to insert message:', error);
+        throw error;
+      }
 
-      await supabase
+      console.log('Message sent successfully:', data);
+
+      // Update conversation last_message_at
+      const { error: updateError } = await supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
+
+      if (updateError) {
+        console.error('Failed to update conversation timestamp:', updateError);
+      }
 
       setNewMessage('');
       setReplyingTo(null);
@@ -225,7 +279,7 @@ export function SchoolChatPanel({ userId, schoolName, isMinimized = false, onMin
       console.error('Send message error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to send message',
+        description: 'Failed to send message. Please try again.',
         variant: 'destructive'
       });
     }
