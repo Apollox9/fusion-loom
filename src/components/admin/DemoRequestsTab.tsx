@@ -261,7 +261,17 @@ export function DemoRequestsTab() {
                 )}
               </div>
 
-              <div className="flex gap-2 pt-4 border-t">
+              <div className="flex flex-wrap gap-2 pt-4 border-t">
+                <Button 
+                  size="sm" 
+                  asChild
+                  className="bg-gradient-hero text-white"
+                >
+                  <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(selectedRequest.email)}&su=${encodeURIComponent(`Re: Demo Request - ${selectedRequest.school_name}`)}`} target="_blank" rel="noopener noreferrer">
+                    <Mail className="h-4 w-4 mr-1" />
+                    Reply via Email
+                  </a>
+                </Button>
                 <Button 
                   size="sm" 
                   variant={selectedRequest.status === 'CONTACTED' ? 'default' : 'outline'}
