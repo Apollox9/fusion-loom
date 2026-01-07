@@ -41,6 +41,15 @@ export default function AdminDashboard() {
   const { user, profile, signOut } = useAuthContext();
   const [activeTab, setActiveTab] = useState('overview');
   
+  // Notification badge counts
+  const [badgeCounts, setBadgeCounts] = useState({
+    newSchools: 0,
+    newOrders: 0,
+    newDemoRequests: 0,
+    newGuestMessages: 0,
+    newMessages: 0
+  });
+  
   // State for overview stats
   const [stats, setStats] = useState({
     totalSchools: 0,
@@ -54,6 +63,8 @@ export default function AdminDashboard() {
   // State for schools
   const [schools, setSchools] = useState<any[]>([]);
   const [searchSchool, setSearchSchool] = useState('');
+  const [schoolSort, setSchoolSort] = useState<'name' | 'date' | 'type'>('name');
+  const [schoolTypeFilter, setSchoolTypeFilter] = useState<string>('all');
 
   // State for orders
   const [orders, setOrders] = useState<any[]>([]);
@@ -84,9 +95,37 @@ export default function AdminDashboard() {
     role: 'OPERATOR'
   });
 
+  // Request browser notification permission
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Fetch notification badge counts
+  const fetchBadgeCounts = async () => {
+    try {
+      const [demoRes, guestRes, messagesRes] = await Promise.all([
+        supabase.from('demo_requests').select('id', { count: 'exact' }).eq('is_read', false),
+        supabase.from('guest_messages').select('id', { count: 'exact' }).eq('is_read', false),
+        supabase.from('messages').select('id', { count: 'exact' }).neq('sender_role', 'ADMIN')
+      ]);
+      
+      setBadgeCounts(prev => ({
+        ...prev,
+        newDemoRequests: demoRes.count || 0,
+        newGuestMessages: guestRes.count || 0,
+        newOrders: pendingOrders.length
+      }));
+    } catch (error) {
+      console.error('Error fetching badge counts:', error);
+    }
+  };
+
   useEffect(() => {
     if (profile?.role === 'ADMIN') {
       fetchDashboardData();
+      fetchBadgeCounts();
     }
   }, [profile]);
 
@@ -504,13 +543,38 @@ export default function AdminDashboard() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-8 lg:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="schools">Schools</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="schools" className="relative">
+              Schools
+              {badgeCounts.newSchools > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 text-xs p-0 flex items-center justify-center">{badgeCounts.newSchools}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="relative">
+              Orders
+              {badgeCounts.newOrders > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 text-xs p-0 flex items-center justify-center">{badgeCounts.newOrders}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="staff">Staff</TabsTrigger>
             <TabsTrigger value="finances">Finances</TabsTrigger>
-            <TabsTrigger value="demo-requests">Demo Requests</TabsTrigger>
-            <TabsTrigger value="guest-messages">Guest Messages</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
+            <TabsTrigger value="demo-requests" className="relative">
+              Demo Requests
+              {badgeCounts.newDemoRequests > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 text-xs p-0 flex items-center justify-center">{badgeCounts.newDemoRequests}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="guest-messages" className="relative">
+              Guest Messages
+              {badgeCounts.newGuestMessages > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 text-xs p-0 flex items-center justify-center">{badgeCounts.newGuestMessages}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="relative">
+              Messages
+              {badgeCounts.newMessages > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 text-xs p-0 flex items-center justify-center">{badgeCounts.newMessages}</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -669,38 +733,90 @@ export default function AdminDashboard() {
 
           {/* Schools Tab */}
           <TabsContent value="schools" className="space-y-4">
-            <div className="flex items-center justify-between">
+            {/* School Type Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {['primary', 'secondary', 'high', 'combined', 'college'].map(type => {
+                const count = schools.filter(s => s.category?.toLowerCase() === type).length;
+                return (
+                  <Card key={type} className="cursor-pointer hover:border-primary transition-colors" onClick={() => setSchoolTypeFilter(schoolTypeFilter === type ? 'all' : type)}>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold">{count}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{type} Schools</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
               <Input
                 placeholder="Search schools..."
                 value={searchSchool}
                 onChange={(e) => setSearchSchool(e.target.value)}
                 className="max-w-sm"
               />
+              <Select value={schoolSort} onValueChange={(v: any) => setSchoolSort(v)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Alphabetical</SelectItem>
+                  <SelectItem value="date">Date Registered</SelectItem>
+                  <SelectItem value="type">School Type</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={schoolTypeFilter} onValueChange={setSchoolTypeFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Filter type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="primary">Primary</SelectItem>
+                  <SelectItem value="secondary">Secondary</SelectItem>
+                  <SelectItem value="high">High School</SelectItem>
+                  <SelectItem value="combined">Combined</SelectItem>
+                  <SelectItem value="college">College</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle>All Schools</CardTitle>
+                <CardTitle>All Schools ({filteredSchools.filter(s => schoolTypeFilter === 'all' || s.category?.toLowerCase() === schoolTypeFilter).length})</CardTitle>
                 <CardDescription>Manage registered schools</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>School Name</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Headmaster</TableHead>
                       <TableHead>District</TableHead>
                       <TableHead>Students</TableHead>
+                      <TableHead>Registered</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredSchools.map((school) => (
+                    {filteredSchools
+                      .filter(s => schoolTypeFilter === 'all' || s.category?.toLowerCase() === schoolTypeFilter)
+                      .sort((a, b) => {
+                        if (schoolSort === 'name') return (a.name || '').localeCompare(b.name || '');
+                        if (schoolSort === 'date') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                        if (schoolSort === 'type') return (a.category || '').localeCompare(b.category || '');
+                        return 0;
+                      })
+                      .map((school, index) => (
                       <TableRow key={school.id}>
+                        <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                         <TableCell className="font-medium">{school.name}</TableCell>
+                        <TableCell><Badge variant="outline" className="capitalize">{school.category || 'N/A'}</Badge></TableCell>
                         <TableCell>{school.headmaster_name}</TableCell>
                         <TableCell>{school.district}</TableCell>
                         <TableCell>{school.total_student_count}</TableCell>
+                        <TableCell>{new Date(school.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Badge variant={school.is_served ? 'default' : 'secondary'}>
                             {school.is_served ? 'Active' : 'Registered'}

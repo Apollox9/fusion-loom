@@ -225,8 +225,8 @@ export function GuestMessagesTab() {
                 </div>
               </div>
               <div className="flex justify-end pt-4 border-t">
-                <Button asChild>
-                  <a href={`mailto:${selectedMessage.email}?subject=Re: ${selectedMessage.subject}`}>
+                <Button asChild className="bg-gradient-hero text-white">
+                  <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(selectedMessage.email)}&su=${encodeURIComponent(`Re: ${selectedMessage.subject}`)}`} target="_blank" rel="noopener noreferrer">
                     <Mail className="h-4 w-4 mr-2" />
                     Reply via Email
                   </a>

@@ -10,7 +10,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { countries, formatPhoneNumber, getRegionsByCountry, getDistrictsByRegion } from '@/utils/countries';
 
 export function AuthPage() {
   const [loading, setLoading] = useState(false);
@@ -460,70 +459,41 @@ export function AuthPage() {
                    <div className="grid grid-cols-3 gap-4">
                      <div className="space-y-2">
                        <Label htmlFor="country" className="text-sm font-semibold text-foreground">Country</Label>
-                       <Select 
-                         value={registerForm.country} 
-                         onValueChange={(value) => {
-                           const country = countries.find(c => c.code === value);
-                           setRegisterForm({ 
-                             ...registerForm, 
-                             country: value,
-                             region: '',
-                             district: '',
-                             phone: country ? country.phoneCode + ' ' : ''
-                           });
-                         }}
-                       >
-                         <SelectTrigger className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
-                           <SelectValue placeholder="Select country" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           {countries.map((country) => (
-                             <SelectItem key={country.code} value={country.code}>
-                               {country.name}
-                             </SelectItem>
-                           ))}
-                         </SelectContent>
-                       </Select>
+                       <Input
+                         id="country"
+                         type="text"
+                         value={registerForm.country}
+                         onChange={(e) => setRegisterForm({ ...registerForm, country: e.target.value.toUpperCase() })}
+                         required
+                         className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 uppercase"
+                         placeholder="TANZANIA"
+                       />
                      </div>
                      
                      <div className="space-y-2">
                        <Label htmlFor="region" className="text-sm font-semibold text-foreground">Region/State</Label>
-                       <Select 
-                         value={registerForm.region} 
-                         onValueChange={(value) => setRegisterForm({ ...registerForm, region: value, district: '' })}
-                         disabled={!registerForm.country}
-                       >
-                         <SelectTrigger className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
-                           <SelectValue placeholder="Select region" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           {getRegionsByCountry(registerForm.country).map((region) => (
-                             <SelectItem key={region.name} value={region.name}>
-                               {region.name}
-                             </SelectItem>
-                           ))}
-                         </SelectContent>
-                       </Select>
+                       <Input
+                         id="region"
+                         type="text"
+                         value={registerForm.region}
+                         onChange={(e) => setRegisterForm({ ...registerForm, region: e.target.value.toUpperCase() })}
+                         required
+                         className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 uppercase"
+                         placeholder="DAR ES SALAAM"
+                       />
                      </div>
                      
                      <div className="space-y-2">
                        <Label htmlFor="district" className="text-sm font-semibold text-foreground">District</Label>
-                       <Select 
-                         value={registerForm.district} 
-                         onValueChange={(value) => setRegisterForm({ ...registerForm, district: value })}
-                         disabled={!registerForm.region}
-                       >
-                         <SelectTrigger className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300">
-                           <SelectValue placeholder="Select district" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           {getDistrictsByRegion(registerForm.country, registerForm.region).map((district) => (
-                             <SelectItem key={district} value={district}>
-                               {district}
-                             </SelectItem>
-                           ))}
-                         </SelectContent>
-                       </Select>
+                       <Input
+                         id="district"
+                         type="text"
+                         value={registerForm.district}
+                         onChange={(e) => setRegisterForm({ ...registerForm, district: e.target.value.toUpperCase() })}
+                         required
+                         className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 uppercase"
+                         placeholder="KINONDONI"
+                       />
                      </div>
                    </div>
                    
@@ -533,20 +503,10 @@ export function AuthPage() {
                        id="phone"
                        type="tel"
                        value={registerForm.phone}
-                       onChange={(e) => {
-                         const country = countries.find(c => c.code === registerForm.country);
-                         if (country) {
-                           const formatted = formatPhoneNumber(e.target.value, country.phoneFormat);
-                           if (formatted.length <= country.maxLength) {
-                             setRegisterForm({ ...registerForm, phone: formatted });
-                           }
-                         } else {
-                           setRegisterForm({ ...registerForm, phone: e.target.value });
-                         }
-                       }}
+                       onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value.toUpperCase() })}
                        required
-                       className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
-                       placeholder={registerForm.country ? countries.find(c => c.code === registerForm.country)?.phoneFormat || "+255 123 456 789" : "+255 123 456 789"}
+                       className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 uppercase"
+                       placeholder="+255 123 456 789"
                      />
                    </div>
                   

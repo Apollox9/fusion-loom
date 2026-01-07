@@ -8,6 +8,7 @@ import FacebookIcon from '@/assets/icons/facebook.svg';
 import InstagramIcon from '@/assets/icons/instagram.svg';
 import TwitterIcon from '@/assets/icons/twitter.svg';
 import YoutubeIcon from '@/assets/icons/youtube.svg';
+import ProjectFusionLogo from '@/assets/project-fusion-logo.png';
 
 // Animated Counter Component
 const AnimatedCounter = ({
@@ -36,7 +37,7 @@ const AnimatedCounter = ({
     }, 16);
     return () => clearInterval(timer);
   }, [end, duration]);
-  return <span className="font-bold text-3xl text-gradient">
+  return <span className="font-bold text-3xl md:text-4xl text-white drop-shadow-lg">
       {prefix}{count.toLocaleString()}{suffix}
     </span>;
 };
@@ -100,19 +101,32 @@ const Index = () => {
     }
   };
 
-  return <div className="min-h-screen bg-gradient-to-b from-background via-muted/30 to-background">
-      {/* Header */}
-      <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
+  return <div className="min-h-screen bg-background relative">
+      {/* Subtle background pattern */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-electric-blue/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-neon-accent/5 rounded-full blur-3xl" />
+        {/* Subtle grid pattern */}
+        <div 
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--primary)) 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }}
+        />
+      </div>
+
+      {/* Header - with blur effect */}
+      <header className="border-b border-border/50 bg-background/70 backdrop-blur-xl sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-hero flex items-center justify-center">
-                <Printer className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold font-display">PROJECT FUSION™</h1>
-                <p className="text-xs text-muted-foreground">We make it permanent</p>
-              </div>
+            <div className="flex items-center">
+              <img 
+                src={ProjectFusionLogo} 
+                alt="Project Fusion" 
+                className="h-10 w-auto object-contain"
+              />
             </div>
             <nav className="hidden md:flex items-center space-x-8">
               <button 
@@ -143,68 +157,63 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto text-center">
-          <div className="animate-fade-in-up">
-            <h1 className="text-5xl md:text-7xl font-bold font-display mb-6 leading-tight">
-              <span className="text-gradient">Effortless Uniform</span>
+      {/* Hero Section - Full viewport with slideshow */}
+      <section className="relative h-[calc(100vh-65px)] overflow-hidden">
+        {/* Slideshow as background */}
+        <HeroSlideshow 
+          autoPlayInterval={4000}
+          className="absolute inset-0"
+        />
+
+        {/* Content overlay */}
+        <div className="relative z-10 h-full flex flex-col items-center justify-center px-6 text-center">
+          <div className="animate-fade-in-up max-w-4xl mx-auto">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display mb-6 leading-tight text-white drop-shadow-2xl">
+              Effortless Uniform
               <br />
-              <span className="text-foreground">Printing for Smart Schools</span>
+              Printing for Smart Schools
             </h1>
-            <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg md:text-xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
               Streamline your school's uniform name-printing process with our cloud-based platform. 
               From submission to delivery, we handle everything while you earn profits.
             </p>
-          </div>
 
-          {/* Hero Slideshow */}
-          <div className="max-w-4xl mx-auto mb-12 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
-            <HeroSlideshow 
-              autoPlayInterval={4000}
-              className="shadow-2xl"
-            />
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in-up" style={{
-          animationDelay: '200ms'
-        }}>
-            <Link to="/auth?tab=register">
-              <Button size="lg" className="px-8 py-4 text-lg bg-gradient-hero hover:shadow-lg hover:scale-105 transition-all duration-300 animate-glow">
-                Join as a School
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
-            <Link to="/features">
-              <Button variant="outline" size="lg" className="px-8 py-4 text-lg border-primary text-primary hover:bg-primary/10">
-                Explore Features
-              </Button>
-            </Link>
-          </div>
-
-          {/* Live Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto animate-fade-in-up" style={{
-          animationDelay: '400ms'
-        }}>
-            <div className="text-center">
-              <AnimatedCounter end={150} suffix="+" />
-              <p className="text-muted-foreground mt-2">Schools Connected</p>
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+              <Link to="/auth?tab=register">
+                <Button size="lg" className="px-8 py-4 text-lg bg-gradient-hero hover:shadow-lg hover:scale-105 transition-all duration-300 animate-glow">
+                  Join as a School
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+              <Link to="/features">
+                <Button variant="outline" size="lg" className="px-8 py-4 text-lg border-white text-white hover:bg-white/20 bg-white/10 backdrop-blur-sm">
+                  Explore Features
+                </Button>
+              </Link>
             </div>
-            <div className="text-center">
-              <AnimatedCounter end={25000} suffix="+" />
-              <p className="text-muted-foreground mt-2">Uniforms Printed</p>
-            </div>
-            <div className="text-center">
-              <AnimatedCounter end={98} suffix="%" />
-              <p className="text-muted-foreground mt-2">Success Rate</p>
+
+            {/* Live Stats */}
+            <div className="grid grid-cols-3 gap-4 md:gap-8 max-w-2xl mx-auto">
+              <div className="text-center bg-black/20 backdrop-blur-sm rounded-xl p-4">
+                <AnimatedCounter end={150} suffix="+" />
+                <p className="text-white/80 mt-1 text-sm md:text-base">Schools Connected</p>
+              </div>
+              <div className="text-center bg-black/20 backdrop-blur-sm rounded-xl p-4">
+                <AnimatedCounter end={25000} suffix="+" />
+                <p className="text-white/80 mt-1 text-sm md:text-base">Uniforms Printed</p>
+              </div>
+              <div className="text-center bg-black/20 backdrop-blur-sm rounded-xl p-4">
+                <AnimatedCounter end={98} suffix="%" />
+                <p className="text-white/80 mt-1 text-sm md:text-base">Success Rate</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-20 px-6 bg-background">
+      <section id="how-it-works" className="py-20 px-6 bg-background relative z-10">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold font-display mb-4">How It Works</h2>
@@ -223,7 +232,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background">
+      <section id="features" className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background relative z-10">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold font-display mb-4">Why Choose Project Fusion?</h2>
@@ -244,7 +253,7 @@ const Index = () => {
       </section>
 
       {/* Profit Tiers Section */}
-      <section id="pricing" className="py-20 px-6 bg-background">
+      <section id="pricing" className="py-20 px-6 bg-background relative z-10">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold font-display mb-4">Transparent Profit Structure</h2>
@@ -286,7 +295,7 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-primary to-secondary">
+      <section className="py-20 px-6 bg-gradient-to-br from-primary to-secondary relative z-10">
         <div className="container mx-auto text-center">
           <div className="animate-fade-in-up">
             <h2 className="text-4xl font-bold text-primary-foreground mb-6 font-display">
@@ -313,19 +322,17 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 px-6 bg-gray-900 text-white">
+      <footer className="py-16 px-6 bg-gray-900 text-white relative z-10">
         <div className="container mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             {/* Company Logo & About */}
             <div className="md:col-span-2">
               <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-gradient-hero flex items-center justify-center">
-                  <Printer className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold font-display text-xl">PROJECT FUSION™</h3>
-                  <p className="text-sm text-gray-400">We make it permanent</p>
-                </div>
+                <img 
+                  src={ProjectFusionLogo} 
+                  alt="Project Fusion" 
+                  className="h-10 w-auto object-contain brightness-0 invert"
+                />
               </div>
               <p className="text-gray-300 max-w-md leading-relaxed">
                 Revolutionizing school uniform printing with cutting-edge technology and seamless automation. 

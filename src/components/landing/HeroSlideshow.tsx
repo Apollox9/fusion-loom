@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
-// This component will dynamically load images from a folder
-// For now, we'll use placeholder images that can be replaced
-const slideshowImages = [
-  { id: 1, src: '/slideshow/slide1.jpg', alt: 'School uniform printing' },
-  { id: 2, src: '/slideshow/slide2.jpg', alt: 'Professional quality prints' },
-  { id: 3, src: '/slideshow/slide3.jpg', alt: 'Fast and reliable service' },
-];
+// Dynamically load images from public/slideshow folder
+const getSlideImages = () => {
+  // These images should be placed in public/slideshow/
+  const images = [
+    { id: 1, src: '/slideshow/download (2).jfif', alt: 'School uniform printing' },
+    { id: 2, src: '/slideshow/wp13324609-new-year-1920x1080-wallpapers.jpg', alt: 'Professional quality prints' },
+    { id: 3, src: '/slideshow/wp8067988-cozy-winter-desktop-wallpapers.jpg', alt: 'Fast and reliable service' },
+  ];
+  return images;
+};
 
 interface HeroSlideshowProps {
   images?: { id: number; src: string; alt: string }[];
@@ -16,10 +19,11 @@ interface HeroSlideshowProps {
 }
 
 export function HeroSlideshow({ 
-  images = slideshowImages, 
+  images, 
   autoPlayInterval = 4000,
   className 
 }: HeroSlideshowProps) {
+  const slideImages = images || getSlideImages();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
@@ -31,53 +35,51 @@ export function HeroSlideshow({
   }, []);
 
   const goToNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
-  }, [images.length]);
+    setCurrentIndex((prev) => (prev + 1) % slideImages.length);
+  }, [slideImages.length]);
 
   // Auto-play effect
   useEffect(() => {
-    if (!isAutoPlaying || images.length <= 1) return;
+    if (!isAutoPlaying || slideImages.length <= 1) return;
 
     const interval = setInterval(goToNext, autoPlayInterval);
     return () => clearInterval(interval);
-  }, [isAutoPlaying, autoPlayInterval, goToNext, images.length]);
+  }, [isAutoPlaying, autoPlayInterval, goToNext, slideImages.length]);
 
-  if (images.length === 0) {
+  if (slideImages.length === 0) {
     return null;
   }
 
   return (
-    <div className={cn("relative w-full overflow-hidden rounded-2xl", className)}>
+    <div className={cn("relative w-full h-full", className)}>
       {/* Slides Container */}
       <div 
-        className="flex transition-transform duration-700 ease-in-out"
+        className="absolute inset-0 flex transition-transform duration-700 ease-in-out"
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
-        {images.map((image) => (
+        {slideImages.map((image) => (
           <div
             key={image.id}
-            className="w-full flex-shrink-0"
+            className="w-full h-full flex-shrink-0 relative"
           >
-            <div className="relative aspect-[16/9] bg-muted">
-              <img
-                src={image.src}
-                alt={image.alt}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to placeholder on error
-                  (e.target as HTMLImageElement).src = '/placeholder.svg';
-                }}
-              />
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-            </div>
+            <img
+              src={image.src}
+              alt={image.alt}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder.svg';
+              }}
+            />
           </div>
         ))}
       </div>
 
+      {/* Tint overlay for text visibility */}
+      <div className="absolute inset-0 bg-black/40" />
+
       {/* Navigation Dots */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-        {images.map((_, index) => (
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+        {slideImages.map((_, index) => (
           <button
             key={index}
             onClick={() => goToSlide(index)}
@@ -90,16 +92,6 @@ export function HeroSlideshow({
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}
-      </div>
-
-      {/* Progress bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
-        <div 
-          className="h-full bg-white transition-all duration-300"
-          style={{ 
-            width: `${((currentIndex + 1) / images.length) * 100}%` 
-          }}
-        />
       </div>
     </div>
   );
