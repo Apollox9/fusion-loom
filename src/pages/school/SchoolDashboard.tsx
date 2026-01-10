@@ -422,6 +422,7 @@ export default function SchoolDashboard() {
         </Tabs>
       </div>
 
+      {/* Chat panel temporarily hidden - functionality preserved
       {user && profile && (
         <SchoolChatPanel
           userId={user.id}
@@ -431,6 +432,7 @@ export default function SchoolDashboard() {
           onClose={() => setChatOpen(false)}
         />
       )}
+      */}
     </div>
   );
 }

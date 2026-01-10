@@ -3,21 +3,48 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Eye, Users, Clock } from 'lucide-react';
+import { ArrowLeft, Eye, Users } from 'lucide-react';
+
+interface StudentData {
+  id: string;
+  student_id: string | null;
+  full_name: string;
+  class_id: string;
+  total_light_garment_count: number;
+  total_dark_garment_count: number;
+  printed_light_garment_count: number;
+  printed_dark_garment_count: number;
+  light_garments_printed: boolean;
+  dark_garments_printed: boolean;
+  is_served: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ClassData {
+  id: string;
+  name: string;
+  is_attended: boolean;
+  total_students_served_in_class: number;
+  total_students_to_serve_in_class: number;
+  students: StudentData[];
+}
 
 interface ClassProgressProps {
-  classData: any;
+  classData: ClassData;
   onBack: () => void;
   onViewStudent: (studentId: string) => void;
 }
 
 export const ClassProgress: React.FC<ClassProgressProps> = ({ classData, onBack, onViewStudent }) => {
   const students = classData.students || [];
-  const totalStudents = students.length;
-  const printedStudents = students.filter((s: any) => s.is_served).length;
+  
+  // Use class-level columns for totals, fallback to counting students
+  const totalStudents = classData.total_students_to_serve_in_class || students.length;
+  const printedStudents = classData.total_students_served_in_class || students.filter((s) => s.is_served).length;
   const progress = totalStudents > 0 ? (printedStudents / totalStudents) * 100 : 0;
   
-  const getStudentPhase = (student: any) => {
+  const getStudentPhase = (student: StudentData) => {
     if (student.is_served) return 'Completed';
     if (student.light_garments_printed && student.dark_garments_printed) return 'Packaging';
     if (student.printed_light_garment_count > 0 || student.printed_dark_garment_count > 0) return 'Printing';
@@ -49,7 +76,10 @@ export const ClassProgress: React.FC<ClassProgressProps> = ({ classData, onBack,
             <Users className="w-5 h-5 text-primary" />
             {classData.name}
           </CardTitle>
-          <CardDescription>Class Progress Overview</CardDescription>
+          <CardDescription>
+            Class Progress Overview 
+            {classData.is_attended && <Badge className="ml-2 bg-green-500/20 text-green-800">Active</Badge>}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -81,47 +111,54 @@ export const ClassProgress: React.FC<ClassProgressProps> = ({ classData, onBack,
         </CardContent>
       </Card>
 
-      {/* Student List */}
+      {/* Student List - from students table */}
       <Card>
         <CardHeader>
           <CardTitle>Student List</CardTitle>
           <CardDescription>Click on a student to view detailed progress</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {students.map((student: any, index: number) => {
-              const phase = getStudentPhase(student);
-              const totalGarments = (student.total_light_garment_count || 0) + (student.total_dark_garment_count || 0);
-              const printedGarments = (student.printed_light_garment_count || 0) + (student.printed_dark_garment_count || 0);
-              const studentProgress = totalGarments > 0 ? (printedGarments / totalGarments) * 100 : 0;
-              
-              return (
-                <div key={student.id || index} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">{student.full_name}</h4>
-                      <Badge className={getPhaseColor(phase)}>
-                        {phase}
-                      </Badge>
+          {students.length > 0 ? (
+            <div className="space-y-3">
+              {students.map((student) => {
+                const phase = getStudentPhase(student);
+                const totalGarments = (student.total_light_garment_count || 0) + (student.total_dark_garment_count || 0);
+                const printedGarments = (student.printed_light_garment_count || 0) + (student.printed_dark_garment_count || 0);
+                const studentProgress = totalGarments > 0 ? (printedGarments / totalGarments) * 100 : 0;
+                
+                return (
+                  <div key={student.id} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold">{student.full_name}</h4>
+                        <Badge className={getPhaseColor(phase)}>
+                          {phase}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+                        <span>{printedGarments} / {totalGarments} garments</span>
+                        <span>{studentProgress.toFixed(0)}% complete</span>
+                      </div>
+                      <Progress value={studentProgress} className="h-2" />
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                      <span>{printedGarments} / {totalGarments} garments</span>
-                      <span>{studentProgress.toFixed(0)}% complete</span>
-                    </div>
-                    <Progress value={studentProgress} className="h-2" />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => onViewStudent(student.id)}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      Details
+                    </Button>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => onViewStudent(student.id || index.toString())}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    Details
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No student data available yet</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
