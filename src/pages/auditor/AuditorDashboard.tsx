@@ -73,17 +73,21 @@ export default function AuditorDashboard() {
   };
 
   const handleStartAudit = async () => {
-    if (!auditorId || !sessionId) {
+    if (!auditorId.trim() || !sessionId.trim()) {
       toast.error('Please enter both Auditor ID and Session ID');
       return;
     }
 
+    // Normalize inputs - trim whitespace and uppercase for matching
+    const normalizedAuditorId = auditorId.trim().toUpperCase();
+    const normalizedSessionId = sessionId.trim().toUpperCase();
+
     try {
-      // First validate the auditor ID exists in staff table
+      // First validate the auditor ID exists in staff table (case-insensitive)
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
         .select('*')
-        .eq('staff_id', auditorId)
+        .ilike('staff_id', normalizedAuditorId)
         .maybeSingle();
 
       if (staffError) {
@@ -98,16 +102,16 @@ export default function AuditorDashboard() {
       }
 
       // Verify the staff is an auditor or has appropriate role
-      if (!['AUDITOR', 'SUPERVISOR', 'ADMIN'].includes(staffData.role)) {
+      if (!['AUDITOR', 'OPERATOR', 'SUPERVISOR', 'ADMIN'].includes(staffData.role)) {
         toast.error('This Staff ID does not have auditing permissions');
         return;
       }
 
-      // Check if session exists in orders using external_ref
+      // Check if session exists in orders using external_ref (case-insensitive)
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .select('*')
-        .eq('external_ref', sessionId)
+        .ilike('external_ref', normalizedSessionId)
         .maybeSingle();
 
       if (orderError) {
@@ -125,7 +129,7 @@ export default function AuditorDashboard() {
       const { data: existingAudit } = await supabase
         .from('audit_reports')
         .select('*')
-        .eq('session_id', sessionId)
+        .ilike('session_id', normalizedSessionId)
         .maybeSingle();
 
       if (existingAudit) {
@@ -133,12 +137,12 @@ export default function AuditorDashboard() {
         toast.info('Continuing existing audit session');
         navigate(`/auditor/audit/${existingAudit.id}`);
       } else {
-        // Create new audit report
+        // Create new audit report - use the actual external_ref from DB for consistency
         const { data: newAudit, error: auditError } = await supabase
           .from('audit_reports')
           .insert({
-            session_id: sessionId,
-            auditor_id: auditorId,
+            session_id: orderData.external_ref,
+            auditor_id: staffData.staff_id,
             auditor_user_id: profile?.id,
             school_id: orderData.created_by_school,
             status: 'IN_PROGRESS',
