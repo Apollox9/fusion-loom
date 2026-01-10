@@ -22,11 +22,18 @@ interface SessionProgressProps {
 }
 
 export const SessionProgress: React.FC<SessionProgressProps> = ({ order, classes, onViewClass }) => {
-  // Use order-level columns for totals and current activity
+  // Calculate from actual data in students/classes tables - count is_served and is_attended
   const totalStudents = order.total_students || 0;
-  const completedStudents = order.total_students_served_in_school || 0;
+  
+  // Count students with is_served=TRUE by looping through all class students
+  const completedStudents = classes.reduce((total, cls) => {
+    return total + (cls.students?.filter((s: any) => s.is_served === true).length || 0);
+  }, 0);
+  
   const totalClasses = order.total_classes_to_serve || classes.length;
-  const completedClasses = order.total_classes_served || classes.filter(c => c.is_attended).length;
+  
+  // Count classes with is_attended=TRUE
+  const completedClasses = classes.filter(c => c.is_attended === true).length;
   
   const progressPercentage = totalStudents > 0 ? (completedStudents / totalStudents) * 100 : 0;
   
@@ -40,11 +47,12 @@ export const SessionProgress: React.FC<SessionProgressProps> = ({ order, classes
     : null;
   
   const getClassStatus = (cls: ClassData) => {
-    const completed = cls.total_students_served_in_class || cls.students?.filter((s: any) => s.is_served).length || 0;
+    // Count students with is_served=TRUE from this class
+    const completed = cls.students?.filter((s: any) => s.is_served === true).length || 0;
     const total = cls.total_students_to_serve_in_class || cls.students?.length || 0;
     
-    if (cls.is_attended && completed === total) return 'Completed';
-    if (completed > 0 || cls.is_attended) return 'Printing';
+    if (cls.is_attended === true && completed === total) return 'Completed';
+    if (completed > 0 || cls.is_attended === true) return 'Printing';
     return 'Pending';
   };
 
@@ -139,7 +147,8 @@ export const SessionProgress: React.FC<SessionProgressProps> = ({ order, classes
             <div className="space-y-3">
               {classes.map((cls) => {
                 const total = cls.total_students_to_serve_in_class || cls.students?.length || 0;
-                const completed = cls.total_students_served_in_class || cls.students?.filter((s: any) => s.is_served).length || 0;
+                // Count students with is_served=TRUE
+                const completed = cls.students?.filter((s: any) => s.is_served === true).length || 0;
                 const progress = total > 0 ? (completed / total) * 100 : 0;
                 const status = getClassStatus(cls);
                 

@@ -36,6 +36,7 @@ import { FinancesTab } from '@/components/finances/FinancesTab';
 import { OrdersTabContent } from '@/components/admin/OrdersTabContent';
 import { DemoRequestsTab } from '@/components/admin/DemoRequestsTab';
 import { GuestMessagesTab } from '@/components/admin/GuestMessagesTab';
+import { StaffTabContent } from '@/components/admin/StaffTabContent';
 
 export default function AdminDashboard() {
   const { user, profile, signOut } = useAuthContext();
@@ -841,130 +842,7 @@ export default function AdminDashboard() {
 
           {/* Staff Tab */}
           <TabsContent value="staff" className="space-y-4">
-            <div className="flex justify-end">
-              <Dialog open={showAddStaff} onOpenChange={setShowAddStaff}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add Staff
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Staff Member</DialogTitle>
-                    <DialogDescription>Create a new staff account with specified role</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Full Name</Label>
-                      <Input
-                        value={newStaff.fullName}
-                        onChange={(e) => setNewStaff({ ...newStaff, fullName: e.target.value })}
-                        placeholder="Enter full name"
-                      />
-                    </div>
-                    <div>
-                      <Label>Email</Label>
-                      <Input
-                        type="email"
-                        value={newStaff.email}
-                        onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                        placeholder="Enter email"
-                      />
-                    </div>
-                    <div>
-                      <Label>Phone Number</Label>
-                      <Input
-                        value={newStaff.phoneNumber}
-                        onChange={(e) => setNewStaff({ ...newStaff, phoneNumber: e.target.value })}
-                        placeholder="Enter phone number"
-                      />
-                    </div>
-                    <div>
-                      <Label>Role</Label>
-                      <Select value={newStaff.role} onValueChange={(value: any) => setNewStaff({ ...newStaff, role: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="OPERATOR">Operator</SelectItem>
-                          <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
-                          <SelectItem value="AUDITOR">Auditor</SelectItem>
-                          <SelectItem value="AGENT">Agent</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {/* Agent-specific fields */}
-                    {newStaff.role === 'AGENT' && (
-                      <>
-                        <div>
-                          <Label>Business Name</Label>
-                          <Input
-                            value={newStaff.businessName || ''}
-                            onChange={(e) => setNewStaff({ ...newStaff, businessName: e.target.value })}
-                            placeholder="Enter business name"
-                          />
-                        </div>
-                        <div>
-                          <Label>Country</Label>
-                          <Input
-                            value={newStaff.country || ''}
-                            onChange={(e) => setNewStaff({ ...newStaff, country: e.target.value })}
-                            placeholder="Enter country"
-                          />
-                        </div>
-                        <div>
-                          <Label>Region</Label>
-                          <Input
-                            value={newStaff.region || ''}
-                            onChange={(e) => setNewStaff({ ...newStaff, region: e.target.value })}
-                            placeholder="Enter region"
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowAddStaff(false)}>Cancel</Button>
-                    <Button onClick={handleCreateStaff} disabled={isCreatingStaff}>
-                      {isCreatingStaff ? 'Creating...' : 'Create Staff'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Staff Members</CardTitle>
-                <CardDescription>Manage operators, supervisors, and auditors</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Staff ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {staff.map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell className="font-medium">{member.staff_id}</TableCell>
-                        <TableCell>{member.full_name}</TableCell>
-                        <TableCell>{member.email}</TableCell>
-                        <TableCell><Badge>{member.role}</Badge></TableCell>
-                        <TableCell>{new Date(member.created_at).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <StaffTabContent onRefresh={fetchDashboardData} />
           </TabsContent>
 
           {/* Finances Tab */}
