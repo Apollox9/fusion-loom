@@ -6,36 +6,46 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, Clock, Users, BookOpen } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
+interface ClassData {
+  id: string;
+  name: string;
+  is_attended: boolean;
+  total_students_served_in_class: number;
+  total_students_to_serve_in_class: number;
+  students: any[];
+}
+
 interface SessionProgressProps {
   order: any;
+  classes: ClassData[];
   onViewClass: (classId: string) => void;
 }
 
-export const SessionProgress: React.FC<SessionProgressProps> = ({ order, onViewClass }) => {
-  const sessionData = order.session_data || {};
-  const classes = sessionData.classes || [];
-  
+export const SessionProgress: React.FC<SessionProgressProps> = ({ order, classes, onViewClass }) => {
+  // Use order-level columns for totals and current activity
   const totalStudents = order.total_students || 0;
-  const completedStudents = classes.reduce((sum: number, cls: any) => {
-    return sum + (cls.students?.filter((s: any) => s.is_served).length || 0);
-  }, 0);
+  const completedStudents = order.total_students_served_in_school || 0;
+  const totalClasses = order.total_classes_to_serve || classes.length;
+  const completedClasses = order.total_classes_served || classes.filter(c => c.is_attended).length;
   
   const progressPercentage = totalStudents > 0 ? (completedStudents / totalStudents) * 100 : 0;
   
-  const currentClass = classes.find((cls: any) => {
-    const hasInProgress = cls.students?.some((s: any) => !s.is_served);
-    return hasInProgress;
-  });
+  // Use order columns for current class and student (updated in real-time)
+  const currentClassName = order.current_class_name;
+  const currentStudentName = order.current_student_name;
   
-  const currentStudent = currentClass?.students?.find((s: any) => !s.is_served);
+  // Find current class data for progress bar
+  const currentClassData = currentClassName 
+    ? classes.find(c => c.name === currentClassName) 
+    : null;
   
-  const getClassStatus = (cls: any) => {
-    const total = cls.students?.length || 0;
-    const completed = cls.students?.filter((s: any) => s.is_served).length || 0;
+  const getClassStatus = (cls: ClassData) => {
+    const completed = cls.total_students_served_in_class || cls.students?.filter((s: any) => s.is_served).length || 0;
+    const total = cls.total_students_to_serve_in_class || cls.students?.length || 0;
     
-    if (completed === 0) return 'Pending';
-    if (completed === total) return 'Completed';
-    return 'Printing';
+    if (cls.is_attended && completed === total) return 'Completed';
+    if (completed > 0 || cls.is_attended) return 'Printing';
+    return 'Pending';
   };
 
   return (
@@ -47,7 +57,7 @@ export const SessionProgress: React.FC<SessionProgressProps> = ({ order, onViewC
             <BookOpen className="w-5 h-5 text-primary" />
             Session Overview
           </CardTitle>
-          <CardDescription>Order ID: {order.external_ref || order.id.slice(0, 8)}</CardDescription>
+          <CardDescription>Order ID: {order.external_ref || order.id?.slice(0, 8)}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -57,7 +67,7 @@ export const SessionProgress: React.FC<SessionProgressProps> = ({ order, onViewC
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Classes</p>
-              <p className="text-2xl font-bold">{classes.length}</p>
+              <p className="text-2xl font-bold">{totalClasses}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Printed Students</p>
@@ -79,32 +89,38 @@ export const SessionProgress: React.FC<SessionProgressProps> = ({ order, onViewC
           
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4" />
-            <span>Started {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}</span>
+            <span>Started {order.created_at ? formatDistanceToNow(new Date(order.created_at), { addSuffix: true }) : 'recently'}</span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Current Activity */}
-      {currentClass && (
+      {/* Current Activity - using order columns */}
+      {(currentClassName || currentStudentName) && (
         <Card className="bg-gradient-to-r from-primary/5 to-blue-500/5 border-primary/30">
           <CardHeader>
             <CardTitle className="text-lg">Current Activity</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div>
-              <p className="text-sm text-muted-foreground">Current Class</p>
-              <p className="font-semibold text-lg">{currentClass.name}</p>
-              <div className="mt-2">
-                <Progress 
-                  value={((currentClass.students?.filter((s: any) => s.is_served).length || 0) / (currentClass.students?.length || 1)) * 100} 
-                  className="h-2" 
-                />
+            {currentClassName && (
+              <div>
+                <p className="text-sm text-muted-foreground">Current Class</p>
+                <p className="font-semibold text-lg">{currentClassName}</p>
+                {currentClassData && (
+                  <div className="mt-2">
+                    <Progress 
+                      value={currentClassData.total_students_to_serve_in_class > 0 
+                        ? (currentClassData.total_students_served_in_class / currentClassData.total_students_to_serve_in_class) * 100 
+                        : 0} 
+                      className="h-2" 
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-            {currentStudent && (
+            )}
+            {currentStudentName && (
               <div>
                 <p className="text-sm text-muted-foreground">Current Student</p>
-                <p className="font-semibold">{currentStudent.full_name}</p>
+                <p className="font-semibold">{currentStudentName}</p>
                 <Badge className="mt-1">Processing</Badge>
               </div>
             )}
@@ -112,50 +128,57 @@ export const SessionProgress: React.FC<SessionProgressProps> = ({ order, onViewC
         </Card>
       )}
 
-      {/* Class List */}
+      {/* Class List - from classes table */}
       <Card>
         <CardHeader>
           <CardTitle>Class Breakdown</CardTitle>
-          <CardDescription>View detailed progress for each class</CardDescription>
+          <CardDescription>View detailed progress for each class ({completedClasses} of {totalClasses} completed)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {classes.map((cls: any, index: number) => {
-              const total = cls.students?.length || 0;
-              const completed = cls.students?.filter((s: any) => s.is_served).length || 0;
-              const progress = total > 0 ? (completed / total) * 100 : 0;
-              const status = getClassStatus(cls);
-              
-              return (
-                <div key={index} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">{cls.name}</h4>
-                      <Badge variant={status === 'Completed' ? 'default' : status === 'Printing' ? 'secondary' : 'outline'}>
-                        {status}
-                      </Badge>
+          {classes.length > 0 ? (
+            <div className="space-y-3">
+              {classes.map((cls) => {
+                const total = cls.total_students_to_serve_in_class || cls.students?.length || 0;
+                const completed = cls.total_students_served_in_class || cls.students?.filter((s: any) => s.is_served).length || 0;
+                const progress = total > 0 ? (completed / total) * 100 : 0;
+                const status = getClassStatus(cls);
+                
+                return (
+                  <div key={cls.id} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold">{cls.name}</h4>
+                        <Badge variant={status === 'Completed' ? 'default' : status === 'Printing' ? 'secondary' : 'outline'}>
+                          {status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {total} students
+                        </span>
+                        <span>{completed} printed</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        {total} students
-                      </span>
-                      <span>{completed} printed</span>
-                    </div>
-                    <Progress value={progress} className="h-2" />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => onViewClass(cls.id)}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => onViewClass(cls.id || index.toString())}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No class data available yet</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
