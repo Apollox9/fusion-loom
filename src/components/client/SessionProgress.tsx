@@ -156,7 +156,12 @@ export const SessionProgress: React.FC<SessionProgressProps> = ({ order, classes
                   <div key={cls.id} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold">{cls.name}</h4>
+                        <h4 className="font-semibold">
+                          {cls.name}
+                          <span className="ml-2 text-sm font-normal text-muted-foreground">
+                            ({completed}/{total})
+                          </span>
+                        </h4>
                         <Badge variant={status === 'Completed' ? 'default' : status === 'Printing' ? 'secondary' : 'outline'}>
                           {status}
                         </Badge>

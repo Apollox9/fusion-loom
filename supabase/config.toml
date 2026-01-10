@@ -3,6 +3,9 @@ project_id = "ylveodmlyhoygullpcct"
 [functions.create-staff]
 verify_jwt = true
 
+[functions.update-staff-password]
+verify_jwt = true
+
 [functions.init-session]
 verify_jwt = false
 
