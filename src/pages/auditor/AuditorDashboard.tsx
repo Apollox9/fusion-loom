@@ -79,28 +79,58 @@ export default function AuditorDashboard() {
     }
 
     try {
-      // Check if session exists in orders
+      // First validate the auditor ID exists in staff table
+      const { data: staffData, error: staffError } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('staff_id', auditorId)
+        .maybeSingle();
+
+      if (staffError) {
+        console.error('Error validating staff ID:', staffError);
+        toast.error('Error validating Auditor ID');
+        return;
+      }
+
+      if (!staffData) {
+        toast.error('Invalid Auditor ID. Please check and try again.');
+        return;
+      }
+
+      // Verify the staff is an auditor or has appropriate role
+      if (!['AUDITOR', 'SUPERVISOR', 'ADMIN'].includes(staffData.role)) {
+        toast.error('This Staff ID does not have auditing permissions');
+        return;
+      }
+
+      // Check if session exists in orders using external_ref
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .select('*')
         .eq('external_ref', sessionId)
-        .single();
+        .maybeSingle();
 
-      if (orderError || !orderData) {
-        toast.error('Session ID not found');
+      if (orderError) {
+        console.error('Error finding session:', orderError);
+        toast.error('Error looking up Session ID');
         return;
       }
 
-      // Create or get audit report
+      if (!orderData) {
+        toast.error('Session ID not found. Please check the Order ID.');
+        return;
+      }
+
+      // Check for existing audit report for this session (by any auditor)
       const { data: existingAudit } = await supabase
         .from('audit_reports')
         .select('*')
         .eq('session_id', sessionId)
-        .eq('auditor_user_id', profile?.id)
         .maybeSingle();
 
       if (existingAudit) {
-        // Navigate to existing audit
+        // Navigate to existing audit - allow any auditor to continue
+        toast.info('Continuing existing audit session');
         navigate(`/auditor/audit/${existingAudit.id}`);
       } else {
         // Create new audit report
@@ -111,14 +141,15 @@ export default function AuditorDashboard() {
             auditor_id: auditorId,
             auditor_user_id: profile?.id,
             school_id: orderData.created_by_school,
-            status: 'IN_PROGRESS'
+            status: 'IN_PROGRESS',
+            report_details: { audit_trail: [] }
           })
           .select()
           .single();
 
         if (auditError) throw auditError;
 
-        toast.success('Audit session started');
+        toast.success('Audit session started successfully');
         navigate(`/auditor/audit/${newAudit.id}`);
       }
     } catch (error: any) {

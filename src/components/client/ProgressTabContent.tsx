@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { SessionProgress } from './SessionProgress';
 import { ClassProgress } from './ClassProgress';
 import { StudentProgress } from './StudentProgress';
@@ -57,8 +57,8 @@ export const ProgressTabContent: React.FC<ProgressTabContentProps> = ({ sessions
   // Find the ONGOING order
   const activeSession = sessions[0];
 
-  // Fetch data from correct tables
-  const fetchProgressData = async () => {
+  // Memoized fetch function for progress data
+  const fetchProgressData = useCallback(async () => {
     if (!activeSession?.id) {
       setLoading(false);
       return;
@@ -101,6 +101,22 @@ export const ProgressTabContent: React.FC<ProgressTabContentProps> = ({ sessions
 
       setClassesData(classesWithStudents);
       setStudentsData(students || []);
+      
+      // Update selected class if we're in class view to reflect latest data
+      if (selectedClass) {
+        const updatedClass = classesWithStudents.find(c => c.id === selectedClass.id);
+        if (updatedClass) {
+          setSelectedClass(updatedClass);
+        }
+      }
+      
+      // Update selected student if we're in student view
+      if (selectedStudent) {
+        const updatedStudent = (students || []).find((s: any) => s.id === selectedStudent.id);
+        if (updatedStudent) {
+          setSelectedStudent(updatedStudent);
+        }
+      }
     } catch (error) {
       console.error('Error fetching progress data:', error);
       toast({
@@ -111,20 +127,22 @@ export const ProgressTabContent: React.FC<ProgressTabContentProps> = ({ sessions
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeSession?.id, selectedClass?.id, selectedStudent?.id, toast]);
 
   // Initial fetch
   useEffect(() => {
     fetchProgressData();
-  }, [activeSession?.id]);
+  }, [fetchProgressData]);
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions with proper filtering
   useEffect(() => {
     if (!activeSession?.id) return;
 
-    // Subscribe to orders table changes
+    console.log('Setting up real-time subscriptions for session:', activeSession.id);
+
+    // Subscribe to orders table changes for this specific order
     const ordersChannel = supabase
-      .channel('orders-progress-changes')
+      .channel(`orders-progress-${activeSession.id}`)
       .on(
         'postgres_changes',
         {
@@ -134,54 +152,65 @@ export const ProgressTabContent: React.FC<ProgressTabContentProps> = ({ sessions
           filter: `id=eq.${activeSession.id}`
         },
         (payload) => {
-          console.log('Order updated:', payload);
+          console.log('Order updated (realtime):', payload);
           if (payload.new) {
             setOrderData(payload.new);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Orders channel status:', status);
+      });
 
-    // Subscribe to classes table changes
+    // Subscribe to classes table changes for this session
     const classesChannel = supabase
-      .channel('classes-progress-changes')
+      .channel(`classes-progress-${activeSession.id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'classes'
+          table: 'classes',
+          filter: `session_id=eq.${activeSession.id}`
         },
         (payload) => {
-          console.log('Class updated:', payload);
-          fetchProgressData(); // Refetch to get updated data with students
+          console.log('Class updated (realtime):', payload);
+          // Refetch to get updated data with students
+          fetchProgressData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Classes channel status:', status);
+      });
 
-    // Subscribe to students table changes
+    // Subscribe to students table changes for this session
     const studentsChannel = supabase
-      .channel('students-progress-changes')
+      .channel(`students-progress-${activeSession.id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'students'
+          table: 'students',
+          filter: `session_id=eq.${activeSession.id}`
         },
         (payload) => {
-          console.log('Student updated:', payload);
-          fetchProgressData(); // Refetch to update all related data
+          console.log('Student updated (realtime):', payload);
+          // Refetch to update all related data
+          fetchProgressData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Students channel status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up real-time subscriptions');
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(classesChannel);
       supabase.removeChannel(studentsChannel);
     };
-  }, [activeSession?.id]);
+  }, [activeSession?.id, fetchProgressData]);
 
   const handleViewClass = (classId: string) => {
     const classData = classesData.find((c) => c.id === classId);
