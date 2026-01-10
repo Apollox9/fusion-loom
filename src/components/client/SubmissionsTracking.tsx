@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +38,9 @@ interface Submission {
   total_students_served_in_school?: number;
   total_classes_to_serve?: number;
   total_classes_served?: number;
+  // Dynamic progress counts
+  studentsServedCount?: number;
+  classesCompletedCount?: number;
 }
 
 export function SubmissionsTracking() {
@@ -65,52 +68,7 @@ export function SubmissionsTracking() {
     fetchSchool();
   }, [user?.id]);
 
-  useEffect(() => {
-    if (!schoolId) return;
-    
-    fetchSubmissions();
-    
-    // Set up real-time subscription for orders
-    const ordersChannel = supabase
-      .channel('orders-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `created_by_school=eq.${schoolId}`
-        },
-        () => {
-          fetchSubmissions();
-        }
-      )
-      .subscribe();
-
-    // Set up real-time subscription for pending orders
-    const pendingChannel = supabase
-      .channel('pending-orders-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'pending_orders',
-          filter: `school_id=eq.${schoolId}`
-        },
-        () => {
-          fetchSubmissions();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(ordersChannel);
-      supabase.removeChannel(pendingChannel);
-    };
-  }, [schoolId]);
-
-  const fetchSubmissions = async () => {
+  const fetchSubmissions = useCallback(async () => {
     try {
       if (!schoolId) return;
       
@@ -134,17 +92,127 @@ export function SubmissionsTracking() {
       const pending = (pendingData || []).map((p): Submission => ({
         ...p,
         status: 'PENDING',
-        external_ref: p.order_id
+        external_ref: p.order_id,
+        studentsServedCount: 0,
+        classesCompletedCount: 0
       }));
 
-      const all: Submission[] = [...pending, ...(ordersData || [])];
+      // For each order, fetch dynamic progress from students and classes tables
+      const ordersWithProgress = await Promise.all(
+        (ordersData || []).map(async (order) => {
+          // Fetch students with is_served=true for this session
+          const { data: studentsData } = await supabase
+            .from('students')
+            .select('is_served')
+            .eq('session_id', order.id);
+          
+          const studentsServedCount = (studentsData || []).filter(s => s.is_served).length;
+          
+          // Fetch classes with is_attended=true for this session
+          const { data: classesData } = await supabase
+            .from('classes')
+            .select('is_attended')
+            .eq('session_id', order.id);
+          
+          const classesCompletedCount = (classesData || []).filter(c => c.is_attended).length;
+
+          return {
+            ...order,
+            studentsServedCount,
+            classesCompletedCount
+          } as Submission;
+        })
+      );
+
+      const all: Submission[] = [...pending, ...ordersWithProgress];
       setSubmissions(all);
     } catch (error) {
       console.error('Error fetching submissions:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [schoolId]);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    
+    fetchSubmissions();
+    
+    // Set up real-time subscription for orders
+    const ordersChannel = supabase
+      .channel('submissions-orders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `created_by_school=eq.${schoolId}`
+        },
+        () => {
+          fetchSubmissions();
+        }
+      )
+      .subscribe();
+
+    // Set up real-time subscription for pending orders
+    const pendingChannel = supabase
+      .channel('submissions-pending-orders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pending_orders',
+          filter: `school_id=eq.${schoolId}`
+        },
+        () => {
+          fetchSubmissions();
+        }
+      )
+      .subscribe();
+
+    // Set up real-time subscription for students
+    const studentsChannel = supabase
+      .channel('submissions-students-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'students',
+          filter: `school_id=eq.${schoolId}`
+        },
+        () => {
+          fetchSubmissions();
+        }
+      )
+      .subscribe();
+
+    // Set up real-time subscription for classes
+    const classesChannel = supabase
+      .channel('submissions-classes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'classes',
+          filter: `school_id=eq.${schoolId}`
+        },
+        () => {
+          fetchSubmissions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(pendingChannel);
+      supabase.removeChannel(studentsChannel);
+      supabase.removeChannel(classesChannel);
+    };
+  }, [schoolId, fetchSubmissions]);
 
   const getStatusConfig = (status: string) => {
     const configs: Record<string, any> = {
@@ -230,8 +298,8 @@ export function SubmissionsTracking() {
     if (submission.status === 'QUEUED') return 30;
     if (submission.status === 'PICKUP') return 35;
     if (submission.status === 'ONGOING') {
-      // Live progress based on served students from database
-      const served = submission.total_students_served_in_school || 0;
+      // Live progress based on served students from dynamic count
+      const served = submission.studentsServedCount || 0;
       const total = submission.total_students || 1;
       return 40 + ((served / total) * 40); // 40-80% range
     }
@@ -415,13 +483,13 @@ export function SubmissionsTracking() {
                     <div>
                       <p className="text-sm text-muted-foreground">Students Served</p>
                       <p className="font-medium">
-                        {selectedSubmission.total_students_served_in_school || 0} / {selectedSubmission.total_students || 0}
+                        {selectedSubmission.studentsServedCount || 0} / {selectedSubmission.total_students || 0}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Classes Progress</p>
+                      <p className="text-sm text-muted-foreground">Classes Completed</p>
                       <p className="font-medium">
-                        {selectedSubmission.total_classes_served || 0} / {selectedSubmission.total_classes_to_serve || 0}
+                        {selectedSubmission.classesCompletedCount || 0} / {selectedSubmission.total_classes_to_serve || 0}
                       </p>
                     </div>
                   </>
@@ -506,12 +574,12 @@ function SubmissionCard({ submission, onViewDetails, progress, statusConfig }: S
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Live Progress</span>
                 <span className="text-sm text-muted-foreground">
-                  {submission.total_students_served_in_school || 0} / {submission.total_students || 0} students
+                  {submission.studentsServedCount || 0} / {submission.total_students || 0} students
                 </span>
               </div>
               <Progress value={progress} className="h-2" />
               <p className="text-xs text-muted-foreground mt-1">
-                {Math.round(progress)}% Complete • Classes: {submission.total_classes_served || 0}/{submission.total_classes_to_serve || 0}
+                {Math.round(progress)}% Complete • Classes: {submission.classesCompletedCount || 0}/{submission.total_classes_to_serve || 0}
               </p>
             </div>
           )}
