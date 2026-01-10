@@ -39,9 +39,9 @@ interface ClassProgressProps {
 export const ClassProgress: React.FC<ClassProgressProps> = ({ classData, onBack, onViewStudent }) => {
   const students = classData.students || [];
   
-  // Use class-level columns for totals, fallback to counting students
+  // Count students with is_served=TRUE from the students array
   const totalStudents = classData.total_students_to_serve_in_class || students.length;
-  const printedStudents = classData.total_students_served_in_class || students.filter((s) => s.is_served).length;
+  const printedStudents = students.filter((s) => s.is_served === true).length;
   const progress = totalStudents > 0 ? (printedStudents / totalStudents) * 100 : 0;
   
   const getStudentPhase = (student: StudentData) => {

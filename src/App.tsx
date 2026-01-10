@@ -51,7 +51,7 @@ const App = () => (
 
             {/* Auditor Portal */}
             <Route path="/auditor/*" element={
-              <ProtectedRoute allowedRoles={['OPERATOR', 'SUPERVISOR']}>
+              <ProtectedRoute allowedRoles={['AUDITOR', 'OPERATOR', 'SUPERVISOR']}>
                 <AuditorDashboard />
               </ProtectedRoute>
             } />
