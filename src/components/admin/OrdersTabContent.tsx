@@ -38,6 +38,7 @@ interface ClassProgress {
   is_attended: boolean;
   total_students_to_serve_in_class: number;
   total_students_served_in_class: number;
+  students?: StudentProgress[];
 }
 
 interface StudentProgress {
@@ -101,12 +102,27 @@ export function OrdersTabContent({ orders, getStatusBadge, formatCurrency }: Ord
         .order('name');
 
       if (classError) throw classError;
-      setClassProgress(classes || []);
+      
+      // Fetch all students for this order to calculate served counts
+      const { data: allStudents, error: studentsError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('session_id', orderId);
+      
+      if (studentsError) throw studentsError;
+      
+      // Attach students to their respective classes
+      const classesWithStudents = (classes || []).map(cls => ({
+        ...cls,
+        students: (allStudents || []).filter(s => s.class_id === cls.id)
+      }));
+      
+      setClassProgress(classesWithStudents);
 
       // If there are classes, fetch students for the first class
-      if (classes && classes.length > 0) {
-        setSelectedClass(classes[0].id);
-        await fetchStudentsForClass(classes[0].id);
+      if (classesWithStudents.length > 0) {
+        setSelectedClass(classesWithStudents[0].id);
+        setStudentProgress(classesWithStudents[0].students || []);
       }
     } catch (error) {
       console.error('Error fetching order progress:', error);
@@ -115,19 +131,24 @@ export function OrdersTabContent({ orders, getStatusBadge, formatCurrency }: Ord
     }
   };
 
-  const fetchStudentsForClass = async (classId: string) => {
-    try {
-      const { data: students, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('class_id', classId)
-        .order('full_name');
-
-      if (error) throw error;
-      setStudentProgress(students || []);
-    } catch (error) {
-      console.error('Error fetching students:', error);
+  const handleClassSelect = (classId: string) => {
+    setSelectedClass(classId);
+    const cls = classProgress.find(c => c.id === classId);
+    if (cls?.students) {
+      setStudentProgress(cls.students);
     }
+  };
+
+  // Calculate students served by looping through students with is_served=TRUE
+  const calculateStudentsServed = (classes: ClassProgress[]) => {
+    return classes.reduce((total, cls) => {
+      return total + (cls.students?.filter(s => s.is_served === true).length || 0);
+    }, 0);
+  };
+
+  // Calculate classes completed by counting is_attended=TRUE
+  const calculateClassesCompleted = (classes: ClassProgress[]) => {
+    return classes.filter(cls => cls.is_attended === true).length;
   };
 
   const handleViewProgress = async (order: Order) => {
@@ -135,10 +156,6 @@ export function OrdersTabContent({ orders, getStatusBadge, formatCurrency }: Ord
     await fetchOrderProgress(order.id);
   };
 
-  const handleClassSelect = async (classId: string) => {
-    setSelectedClass(classId);
-    await fetchStudentsForClass(classId);
-  };
 
   // Filter and sort orders
   const filteredOrders = orders
@@ -338,61 +355,65 @@ export function OrdersTabContent({ orders, getStatusBadge, formatCurrency }: Ord
                       {new Date(order.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      {order.status === 'ONGOING' ? (
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleViewProgress(order)}
-                              className="gap-1"
-                            >
-                              <Eye className="h-4 w-4" />
-                              Progress
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle>Order Progress - {order.external_ref || order.id.slice(0, 8)}</DialogTitle>
-                              <DialogDescription>{order.school_name}</DialogDescription>
-                            </DialogHeader>
-                            
-                            {isLoadingProgress ? (
-                              <div className="flex items-center justify-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                              </div>
-                            ) : (
-                              <div className="space-y-6">
-                                {/* Overall Progress */}
-                                <div className="p-4 bg-accent/20 rounded-lg">
-                                  <h4 className="font-medium mb-3">Overall Progress</h4>
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                      <span>Students Served</span>
-                                      <span>{order.total_students_served_in_school} / {order.total_students}</span>
-                                    </div>
-                                    <Progress 
-                                      value={calculateProgress(order.total_students_served_in_school, order.total_students)} 
-                                      className="h-2"
-                                    />
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant={order.status === 'ONGOING' ? 'outline' : 'ghost'} 
+                            size="sm"
+                            onClick={() => handleViewProgress(order)}
+                            className="gap-1"
+                          >
+                            <Eye className="h-4 w-4" />
+                            {order.status === 'ONGOING' ? 'Progress' : 'View'}
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>
+                              {order.status === 'ONGOING' ? 'Order Progress' : 'Order Details'} - {order.external_ref || order.id.slice(0, 8)}
+                            </DialogTitle>
+                            <DialogDescription>{order.school_name}</DialogDescription>
+                          </DialogHeader>
+                          
+                          {isLoadingProgress ? (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            </div>
+                          ) : (
+                            <div className="space-y-6">
+                              {/* Overall Progress - Calculate from students/classes tables */}
+                              <div className="p-4 bg-accent/20 rounded-lg">
+                                <h4 className="font-medium mb-3">Overall Progress</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span>Students Served</span>
+                                    <span>{calculateStudentsServed(classProgress)} / {order.total_students}</span>
                                   </div>
-                                  <div className="space-y-2 mt-3">
-                                    <div className="flex justify-between text-sm">
-                                      <span>Classes Completed</span>
-                                      <span>{order.total_classes_served} / {order.total_classes_to_serve}</span>
-                                    </div>
-                                    <Progress 
-                                      value={calculateProgress(order.total_classes_served, order.total_classes_to_serve)} 
-                                      className="h-2"
-                                    />
-                                  </div>
+                                  <Progress 
+                                    value={calculateProgress(calculateStudentsServed(classProgress), order.total_students)} 
+                                    className="h-2"
+                                  />
                                 </div>
+                                <div className="space-y-2 mt-3">
+                                  <div className="flex justify-between text-sm">
+                                    <span>Classes Completed</span>
+                                    <span>{calculateClassesCompleted(classProgress)} / {order.total_classes_to_serve}</span>
+                                  </div>
+                                  <Progress 
+                                    value={calculateProgress(calculateClassesCompleted(classProgress), order.total_classes_to_serve)} 
+                                    className="h-2"
+                                  />
+                                </div>
+                              </div>
 
-                                {/* Class Progress */}
-                                <div>
-                                  <h4 className="font-medium mb-3">Class Progress</h4>
-                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    {classProgress.map(cls => (
+                              {/* Class Progress with served count from students */}
+                              <div>
+                                <h4 className="font-medium mb-3">Class Progress</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                  {classProgress.map(cls => {
+                                    const studentsServed = cls.students?.filter(s => s.is_served === true).length || 0;
+                                    const totalStudents = cls.students?.length || cls.total_students_to_serve_in_class || 0;
+                                    return (
                                       <Button
                                         key={cls.id}
                                         variant={selectedClass === cls.id ? 'default' : 'outline'}
@@ -403,57 +424,52 @@ export function OrdersTabContent({ orders, getStatusBadge, formatCurrency }: Ord
                                         <span className={`w-2 h-2 rounded-full mr-2 ${cls.is_attended ? 'bg-emerald-500' : 'bg-yellow-500'}`} />
                                         {cls.name}
                                         <span className="ml-auto text-xs opacity-70">
-                                          {cls.total_students_served_in_class}/{cls.total_students_to_serve_in_class}
+                                          {studentsServed}/{totalStudents}
                                         </span>
                                       </Button>
-                                    ))}
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Student Progress */}
+                              {selectedClass && studentProgress.length > 0 && (
+                                <div>
+                                  <h4 className="font-medium mb-3">
+                                    Students ({studentProgress.filter(s => s.is_served).length}/{studentProgress.length} served)
+                                  </h4>
+                                  <div className="max-h-[200px] overflow-y-auto">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          <TableHead>Name</TableHead>
+                                          <TableHead>Dark</TableHead>
+                                          <TableHead>Light</TableHead>
+                                          <TableHead>Status</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {studentProgress.map(student => (
+                                          <TableRow key={student.id}>
+                                            <TableCell className="font-medium">{student.full_name}</TableCell>
+                                            <TableCell>{student.total_dark_garment_count}</TableCell>
+                                            <TableCell>{student.total_light_garment_count}</TableCell>
+                                            <TableCell>
+                                              <Badge className={student.is_served ? 'bg-emerald-500/20 text-emerald-700' : 'bg-yellow-500/20 text-yellow-700'}>
+                                                {student.is_served ? 'Served' : 'Pending'}
+                                              </Badge>
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
                                   </div>
                                 </div>
-
-                                {/* Student Progress */}
-                                {selectedClass && studentProgress.length > 0 && (
-                                  <div>
-                                    <h4 className="font-medium mb-3">
-                                      Students ({studentProgress.filter(s => s.is_served).length}/{studentProgress.length} served)
-                                    </h4>
-                                    <div className="max-h-[200px] overflow-y-auto">
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow>
-                                            <TableHead>Name</TableHead>
-                                            <TableHead>Dark</TableHead>
-                                            <TableHead>Light</TableHead>
-                                            <TableHead>Status</TableHead>
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {studentProgress.map(student => (
-                                            <TableRow key={student.id}>
-                                              <TableCell className="font-medium">{student.full_name}</TableCell>
-                                              <TableCell>{student.total_dark_garment_count}</TableCell>
-                                              <TableCell>{student.total_light_garment_count}</TableCell>
-                                              <TableCell>
-                                                <Badge className={student.is_served ? 'bg-emerald-500/20 text-emerald-700' : 'bg-yellow-500/20 text-yellow-700'}>
-                                                  {student.is_served ? 'Served' : 'Pending'}
-                                                </Badge>
-                                              </TableCell>
-                                            </TableRow>
-                                          ))}
-                                        </TableBody>
-                                      </Table>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </DialogContent>
-                        </Dialog>
-                      ) : (
-                        <Button variant="ghost" size="sm" className="gap-1">
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Button>
-                      )}
+                              )}
+                            </div>
+                          )}
+                        </DialogContent>
+                      </Dialog>
                     </TableCell>
                   </TableRow>
                 ))}
