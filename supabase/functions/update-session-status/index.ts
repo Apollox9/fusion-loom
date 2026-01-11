@@ -1,9 +1,5 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,6 +28,11 @@ serve(async (req) => {
   }
 
   try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? '',
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ''
+    );
+
     const body = await req.json();
     const { id, ...rest } = body;
 
@@ -43,7 +44,7 @@ serve(async (req) => {
     }
 
     // Build update object dynamically
-    const updateFields: any = {};
+    const updateFields: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(rest)) {
       if (value === undefined) continue; // skip undefined values
 
@@ -94,10 +95,11 @@ serve(async (req) => {
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Error in update-session-status:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
