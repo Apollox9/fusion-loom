@@ -6,6 +6,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface Machine {
+  device_id: string;
+}
+
+interface Task {
+  status: string;
+  completed_at: string | null;
+  assigned_at: string;
+}
+
+interface Notification {
+  target_id: string;
+  level: string;
+  title: string;
+  body: string;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -55,16 +72,17 @@ serve(async (req) => {
       }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Background jobs error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return new Response(
-      JSON.stringify({ error: 'Background jobs failed', details: error.message }),
+      JSON.stringify({ error: 'Background jobs failed', details: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
 
-async function autoConfirmOrders(supabase: any) {
+async function autoConfirmOrders(supabase: ReturnType<typeof createClient>) {
   try {
     console.log('Running auto-confirm orders job...')
     
@@ -127,7 +145,7 @@ async function autoConfirmOrders(supabase: any) {
   }
 }
 
-async function updateMachineStatus(supabase: any) {
+async function updateMachineStatus(supabase: ReturnType<typeof createClient>) {
   try {
     console.log('Running update machine status job...')
     
@@ -148,14 +166,14 @@ async function updateMachineStatus(supabase: any) {
 
     if (machinesOffline && machinesOffline.length > 0) {
       console.log(`Marked ${machinesOffline.length} machines as offline:`, 
-        machinesOffline.map(m => m.device_id))
+        (machinesOffline as Machine[]).map((m: Machine) => m.device_id))
     }
   } catch (error) {
     console.error('Update machine status job failed:', error)
   }
 }
 
-async function generateDailyMetrics(supabase: any) {
+async function generateDailyMetrics(supabase: ReturnType<typeof createClient>) {
   try {
     console.log('Running generate daily metrics job...')
     
@@ -206,15 +224,16 @@ async function generateDailyMetrics(supabase: any) {
         continue
       }
 
-      const tasksAssigned = tasks?.length || 0
-      const tasksCompleted = tasks?.filter(t => t.status === 'COMPLETED').length || 0
-      const completedTasks = tasks?.filter(t => t.completed_at) || []
+      const typedTasks = (tasks || []) as Task[]
+      const tasksAssigned = typedTasks.length
+      const tasksCompleted = typedTasks.filter((t: Task) => t.status === 'COMPLETED').length
+      const completedTasks = typedTasks.filter((t: Task) => t.completed_at)
       
-      let avgCompletionTime = null
+      let avgCompletionTime: number | null = null
       if (completedTasks.length > 0) {
-        const totalTime = completedTasks.reduce((sum, task) => {
+        const totalTime = completedTasks.reduce((sum: number, task: Task) => {
           const assigned = new Date(task.assigned_at)
-          const completed = new Date(task.completed_at)
+          const completed = new Date(task.completed_at!)
           return sum + (completed.getTime() - assigned.getTime())
         }, 0)
         avgCompletionTime = Math.round(totalTime / completedTasks.length / 1000) // seconds
@@ -247,7 +266,7 @@ async function generateDailyMetrics(supabase: any) {
   }
 }
 
-async function cleanupAuditEvents(supabase: any) {
+async function cleanupAuditEvents(supabase: ReturnType<typeof createClient>) {
   try {
     console.log('Running cleanup audit events job...')
     
@@ -273,7 +292,7 @@ async function cleanupAuditEvents(supabase: any) {
   }
 }
 
-async function sendNotificationSummaries(supabase: any) {
+async function sendNotificationSummaries(supabase: ReturnType<typeof createClient>) {
   try {
     console.log('Running send notification summaries job...')
     
@@ -302,7 +321,7 @@ async function sendNotificationSummaries(supabase: any) {
     }
 
     // Group by user
-    const userNotifications = unreadNotifications.reduce((acc: any, notification) => {
+    const userNotifications = (unreadNotifications as Notification[]).reduce((acc: Record<string, Notification[]>, notification: Notification) => {
       if (!acc[notification.target_id]) {
         acc[notification.target_id] = []
       }
@@ -315,7 +334,7 @@ async function sendNotificationSummaries(supabase: any) {
     // Here you would implement actual notification delivery
     // For now, just log the summary
     for (const [userId, notifications] of Object.entries(userNotifications)) {
-      console.log(`User ${userId} has ${(notifications as any[]).length} unread notifications`)
+      console.log(`User ${userId} has ${(notifications as Notification[]).length} unread notifications`)
     }
   } catch (error) {
     console.error('Send notification summaries job failed:', error)

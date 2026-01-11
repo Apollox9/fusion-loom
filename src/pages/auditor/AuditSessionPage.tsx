@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useRoleBasedAuth } from '@/hooks/useRoleBasedAuth';
@@ -24,7 +24,8 @@ import {
   FileText,
   Clock,
   User,
-  History
+  History,
+  Search
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -55,6 +56,10 @@ export default function AuditSessionPage() {
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   
+  // Search states
+  const [classSearchQuery, setClassSearchQuery] = useState('');
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  
   // Edit dialogs
   const [showEditSession, setShowEditSession] = useState(false);
   const [showEditClass, setShowEditClass] = useState(false);
@@ -81,6 +86,27 @@ export default function AuditSessionPage() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
+
+  // Filtered classes and students based on search
+  const filteredClasses = useMemo(() => {
+    if (!classSearchQuery.trim()) return classes;
+    const query = classSearchQuery.toLowerCase();
+    return classes.filter(cls => 
+      cls.name?.toLowerCase().includes(query)
+    );
+  }, [classes, classSearchQuery]);
+
+  const filteredStudents = useMemo(() => {
+    if (!studentSearchQuery.trim()) return students;
+    const query = studentSearchQuery.toLowerCase();
+    return students.filter(student => {
+      const studentClass = classes.find(c => c.id === student.class_id);
+      return (
+        student.full_name?.toLowerCase().includes(query) ||
+        studentClass?.name?.toLowerCase().includes(query)
+      );
+    });
+  }, [students, studentSearchQuery, classes]);
 
   useEffect(() => {
     if (auditId) {
@@ -593,8 +619,21 @@ export default function AuditSessionPage() {
           <TabsContent value="classes">
             <Card>
               <CardHeader>
-                <CardTitle>Classes in Session</CardTitle>
-                <CardDescription>Review and update class data</CardDescription>
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                  <div>
+                    <CardTitle>Classes in Session</CardTitle>
+                    <CardDescription>Review and update class data</CardDescription>
+                  </div>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search classes..."
+                      value={classSearchQuery}
+                      onChange={(e) => setClassSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -610,44 +649,52 @@ export default function AuditSessionPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {classes.map((cls, index) => {
-                      const classStudents = getStudentsForClass(cls.id);
-                      const submittedCount = classStudents.length;
-                      const collectedCount = cls.total_students_to_serve_in_class || classStudents.length;
-                      const hasDiscrepancy = submittedCount !== collectedCount;
-                      
-                      return (
-                        <TableRow key={cls.id}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell className="font-medium">{cls.name}</TableCell>
-                          <TableCell>{submittedCount}</TableCell>
-                          <TableCell>{collectedCount}</TableCell>
-                          <TableCell>
-                            <Badge variant={cls.is_attended ? 'default' : 'secondary'}>
-                              {cls.is_attended ? 'Attended' : 'Pending'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {hasDiscrepancy ? (
-                              <Badge variant="destructive" className="gap-1">
-                                <AlertCircle className="w-3 h-3" />
-                                Mismatch
+                    {filteredClasses.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          {classSearchQuery ? 'No classes match your search' : 'No classes found'}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredClasses.map((cls, index) => {
+                        const classStudents = getStudentsForClass(cls.id);
+                        const submittedCount = classStudents.length;
+                        const collectedCount = cls.total_students_to_serve_in_class || classStudents.length;
+                        const hasDiscrepancy = submittedCount !== collectedCount;
+                        
+                        return (
+                          <TableRow key={cls.id}>
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell className="font-medium">{cls.name}</TableCell>
+                            <TableCell>{submittedCount}</TableCell>
+                            <TableCell>{collectedCount}</TableCell>
+                            <TableCell>
+                              <Badge variant={cls.is_attended ? 'default' : 'secondary'}>
+                                {cls.is_attended ? 'Attended' : 'Pending'}
                               </Badge>
-                            ) : (
-                              <Badge variant="outline" className="gap-1 text-green-600">
-                                <CheckCircle className="w-3 h-3" />
-                                OK
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => handleEditClassClick(cls)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                            </TableCell>
+                            <TableCell>
+                              {hasDiscrepancy ? (
+                                <Badge variant="destructive" className="gap-1">
+                                  <AlertCircle className="w-3 h-3" />
+                                  Mismatch
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="gap-1 text-green-600">
+                                  <CheckCircle className="w-3 h-3" />
+                                  OK
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="sm" onClick={() => handleEditClassClick(cls)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -658,8 +705,21 @@ export default function AuditSessionPage() {
           <TabsContent value="students">
             <Card>
               <CardHeader>
-                <CardTitle>All Students</CardTitle>
-                <CardDescription>Review and update student garment counts</CardDescription>
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                  <div>
+                    <CardTitle>All Students</CardTitle>
+                    <CardDescription>Review and update student garment counts</CardDescription>
+                  </div>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search students or classes..."
+                      value={studentSearchQuery}
+                      onChange={(e) => setStudentSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -677,31 +737,39 @@ export default function AuditSessionPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {students.map((student, index) => {
-                      const studentClass = classes.find(c => c.id === student.class_id);
-                      
-                      return (
-                        <TableRow key={student.id}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell className="font-medium">{student.full_name}</TableCell>
-                          <TableCell>{studentClass?.name || 'N/A'}</TableCell>
-                          <TableCell>{student.total_light_garment_count || 0}</TableCell>
-                          <TableCell>{student.total_light_garment_count || 0}</TableCell>
-                          <TableCell>{student.total_dark_garment_count || 0}</TableCell>
-                          <TableCell>{student.total_dark_garment_count || 0}</TableCell>
-                          <TableCell>
-                            <Badge variant={student.is_served ? 'default' : 'secondary'}>
-                              {student.is_served ? 'Served' : 'Pending'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => handleEditStudentClick(student)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {filteredStudents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          {studentSearchQuery ? 'No students match your search' : 'No students found'}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredStudents.map((student, index) => {
+                        const studentClass = classes.find(c => c.id === student.class_id);
+                        
+                        return (
+                          <TableRow key={student.id}>
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell className="font-medium">{student.full_name}</TableCell>
+                            <TableCell>{studentClass?.name || 'N/A'}</TableCell>
+                            <TableCell>{student.total_light_garment_count || 0}</TableCell>
+                            <TableCell>{student.total_light_garment_count || 0}</TableCell>
+                            <TableCell>{student.total_dark_garment_count || 0}</TableCell>
+                            <TableCell>{student.total_dark_garment_count || 0}</TableCell>
+                            <TableCell>
+                              <Badge variant={student.is_served ? 'default' : 'secondary'}>
+                                {student.is_served ? 'Served' : 'Pending'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="sm" onClick={() => handleEditStudentClick(student)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
