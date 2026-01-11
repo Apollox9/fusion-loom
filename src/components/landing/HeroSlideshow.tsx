@@ -5,9 +5,10 @@ import { cn } from '@/lib/utils';
 const getSlideImages = () => {
   // These images should be placed in public/slideshow/
   const images = [
-    { id: 1, src: '/slideshow/download (2).jfif', alt: 'School uniform printing' },
-    { id: 2, src: '/slideshow/wp13324609-new-year-1920x1080-wallpapers.jpg', alt: 'Professional quality prints' },
-    { id: 3, src: '/slideshow/wp8067988-cozy-winter-desktop-wallpapers.jpg', alt: 'Fast and reliable service' },
+    { id: 1, src: '/slideshow/wallpaperflare.com_wallpaper.jpg', alt: 'School uniform printing' },
+    { id: 2, src: '/slideshow/wallpaperflare.com_wallpaper (1).jpg', alt: 'Professional quality prints' },
+    { id: 3, src: '/slideshow/wallpaperflare.com_wallpaper (2).jpg', alt: 'Fast and reliable service' },
+    { id: 4, src: '/slideshow/wallpaperflare.com_wallpaper (3).jpg', alt: 'Bank grade security' },
   ];
   return images;
 };
