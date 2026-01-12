@@ -386,7 +386,7 @@ const Index = () => {
           {/* Copyright */}
           <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-400 text-sm mb-4 md:mb-0">
-              ©2025 Blaqlogic Digitals. All rights reserved.
+              ©2026 Blaqlogic Digitals. All rights reserved.
             </div>
             <div className="text-gray-400 text-sm">
               PROJECT FUSION™ is a trademark of Blaqlogic Digitals.
