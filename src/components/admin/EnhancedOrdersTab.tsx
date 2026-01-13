@@ -184,14 +184,14 @@ Greetings from Project Fusion!
 
 We are pleased to inform you that your school uniform printing session has been scheduled.
 
-📍 School: ${order.school_name}
-📍 Location: ${order.district || ''}, ${order.region || ''}, ${order.country || ''}
-📋 Order ID: ${order.external_ref || order.id.slice(0, 8)}
-📊 Total Students: ${order.total_students || 0}
-👕 Total Garments: ${order.total_garments || 0}
+School: ${order.school_name}
+Location: ${order.district || ''}, ${order.region || ''}, ${order.country || ''}
+Order ID: ${order.external_ref || order.id.slice(0, 8)}
+Total Students: ${order.total_students || 0}
+Total Garments: ${order.total_garments || 0}
 
-📅 Scheduled Date: ${scheduledDateStr}
-⏱️ Estimated Duration: ${duration.display}
+Scheduled Date: ${scheduledDateStr}
+Estimated Duration: ${duration.display}
 
 Please ensure all garments are prepared and students are available on the scheduled date. Our team will arrive in the morning to begin the printing session.
 
