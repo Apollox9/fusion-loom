@@ -96,6 +96,7 @@ export type Database = {
           session_id: string
           status: string
           students_with_discrepancies: number
+          submitted_data: Json | null
           submitted_to_admin_at: string | null
           total_students_audited: number
           updated_at: string
@@ -112,6 +113,7 @@ export type Database = {
           session_id: string
           status?: string
           students_with_discrepancies?: number
+          submitted_data?: Json | null
           submitted_to_admin_at?: string | null
           total_students_audited?: number
           updated_at?: string
@@ -128,6 +130,7 @@ export type Database = {
           session_id?: string
           status?: string
           students_with_discrepancies?: number
+          submitted_data?: Json | null
           submitted_to_admin_at?: string | null
           total_students_audited?: number
           updated_at?: string
@@ -144,6 +147,7 @@ export type Database = {
           order_id: string | null
           school_id: string
           session_id: string | null
+          submitted_students_count: number | null
           total_students_served_in_class: number
           total_students_to_serve_in_class: number
           updated_at: string
@@ -157,6 +161,7 @@ export type Database = {
           order_id?: string | null
           school_id: string
           session_id?: string | null
+          submitted_students_count?: number | null
           total_students_served_in_class?: number
           total_students_to_serve_in_class?: number
           updated_at?: string
@@ -170,6 +175,7 @@ export type Database = {
           order_id?: string | null
           school_id?: string
           session_id?: string | null
+          submitted_students_count?: number | null
           total_students_served_in_class?: number
           total_students_to_serve_in_class?: number
           updated_at?: string
@@ -555,6 +561,7 @@ export type Database = {
           delivery: Json | null
           device_used_mac: string | null
           district: string | null
+          estimated_duration_hours: number | null
           external_ref: string | null
           headmaster_name: string | null
           hosted_by: string | null
@@ -569,10 +576,17 @@ export type Database = {
           receipt_image_url: string | null
           receipt_number: string | null
           region: string | null
+          schedule_message_copied_at: string | null
+          scheduled_date: string | null
           school_name: string | null
           session_data: Json | null
           status: Database["public"]["Enums"]["order_status"]
           submission_time: string | null
+          submitted_total_classes: number | null
+          submitted_total_dark_garments: number | null
+          submitted_total_garments: number | null
+          submitted_total_light_garments: number | null
+          submitted_total_students: number | null
           total_amount: number | null
           total_classes_served: number
           total_classes_to_serve: number
@@ -598,6 +612,7 @@ export type Database = {
           delivery?: Json | null
           device_used_mac?: string | null
           district?: string | null
+          estimated_duration_hours?: number | null
           external_ref?: string | null
           headmaster_name?: string | null
           hosted_by?: string | null
@@ -612,10 +627,17 @@ export type Database = {
           receipt_image_url?: string | null
           receipt_number?: string | null
           region?: string | null
+          schedule_message_copied_at?: string | null
+          scheduled_date?: string | null
           school_name?: string | null
           session_data?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           submission_time?: string | null
+          submitted_total_classes?: number | null
+          submitted_total_dark_garments?: number | null
+          submitted_total_garments?: number | null
+          submitted_total_light_garments?: number | null
+          submitted_total_students?: number | null
           total_amount?: number | null
           total_classes_served?: number
           total_classes_to_serve?: number
@@ -641,6 +663,7 @@ export type Database = {
           delivery?: Json | null
           device_used_mac?: string | null
           district?: string | null
+          estimated_duration_hours?: number | null
           external_ref?: string | null
           headmaster_name?: string | null
           hosted_by?: string | null
@@ -655,10 +678,17 @@ export type Database = {
           receipt_image_url?: string | null
           receipt_number?: string | null
           region?: string | null
+          schedule_message_copied_at?: string | null
+          scheduled_date?: string | null
           school_name?: string | null
           session_data?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           submission_time?: string | null
+          submitted_total_classes?: number | null
+          submitted_total_dark_garments?: number | null
+          submitted_total_garments?: number | null
+          submitted_total_light_garments?: number | null
+          submitted_total_students?: number | null
           total_amount?: number | null
           total_classes_served?: number
           total_classes_to_serve?: number
@@ -1135,9 +1165,12 @@ export type Database = {
           light_garments_printed: boolean
           printed_dark_garment_count: number
           printed_light_garment_count: number
+          printing_done_at: string | null
           school_id: string
           session_id: string | null
           student_id: string | null
+          submitted_dark_garment_count: number | null
+          submitted_light_garment_count: number | null
           total_dark_garment_count: number
           total_light_garment_count: number
           updated_at: string
@@ -1152,9 +1185,12 @@ export type Database = {
           light_garments_printed?: boolean
           printed_dark_garment_count?: number
           printed_light_garment_count?: number
+          printing_done_at?: string | null
           school_id: string
           session_id?: string | null
           student_id?: string | null
+          submitted_dark_garment_count?: number | null
+          submitted_light_garment_count?: number | null
           total_dark_garment_count?: number
           total_light_garment_count?: number
           updated_at?: string
@@ -1169,9 +1205,12 @@ export type Database = {
           light_garments_printed?: boolean
           printed_dark_garment_count?: number
           printed_light_garment_count?: number
+          printing_done_at?: string | null
           school_id?: string
           session_id?: string | null
           student_id?: string | null
+          submitted_dark_garment_count?: number | null
+          submitted_light_garment_count?: number | null
           total_dark_garment_count?: number
           total_light_garment_count?: number
           updated_at?: string
