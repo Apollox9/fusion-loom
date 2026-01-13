@@ -25,7 +25,8 @@ import {
   Trash2,
   UserPlus,
   Database,
-  Eye
+  Eye,
+  AlertCircle
 } from 'lucide-react';
 import { generateStaffId } from '@/utils/staffIdGenerator';
 import { formatCurrency } from '@/utils/pricing';
@@ -33,10 +34,11 @@ import { OrderPreviewDialog } from '@/components/admin/OrderPreviewDialog';
 import { AdminChatPanel } from '@/components/chat/AdminChatPanel';
 import { sendOrderApprovedMessage, sendOrderRejectedMessage } from '@/utils/chatMessages';
 import { FinancesTab } from '@/components/finances/FinancesTab';
-import { OrdersTabContent } from '@/components/admin/OrdersTabContent';
+import { EnhancedOrdersTab } from '@/components/admin/EnhancedOrdersTab';
 import { DemoRequestsTab } from '@/components/admin/DemoRequestsTab';
 import { GuestMessagesTab } from '@/components/admin/GuestMessagesTab';
 import { StaffTabContent } from '@/components/admin/StaffTabContent';
+import { OverviewCashFlowChart } from '@/components/admin/OverviewCashFlowChart';
 
 export default function AdminDashboard() {
   const { user, profile, signOut } = useAuthContext();
@@ -580,6 +582,7 @@ export default function AdminDashboard() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -611,13 +614,13 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className={pendingOrders.length > 0 ? 'border-yellow-500/50' : ''}>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.pendingOrders}</div>
+                  <div className="text-2xl font-bold text-yellow-600">{stats.pendingOrders}</div>
                 </CardContent>
               </Card>
 
@@ -643,12 +646,18 @@ export default function AdminDashboard() {
               </Card>
             </div>
 
-            {/* Pending Payment Verifications */}
+            {/* Cash Flow Analytics from Finances Tab */}
+            <OverviewCashFlowChart />
+
+            {/* Quick Pending Orders Preview */}
             {pendingOrders.length > 0 && (
-              <Card>
+              <Card className="border-yellow-500/30">
                 <CardHeader>
-                  <CardTitle>Pending Payment Verifications</CardTitle>
-                  <CardDescription>Review and verify school payment submissions</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-yellow-500" />
+                    Pending Payment Verifications ({pendingOrders.length})
+                  </CardTitle>
+                  <CardDescription>Quick preview - Go to Orders tab for full management</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -658,20 +667,16 @@ export default function AdminDashboard() {
                         <TableHead>School</TableHead>
                         <TableHead>Amount</TableHead>
                         <TableHead>Payment Method</TableHead>
-                        <TableHead>Receipt</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingOrders.map((order) => (
+                      {pendingOrders.slice(0, 3).map((order) => (
                         <TableRow key={order.id}>
                           <TableCell className="font-medium">{order.order_id}</TableCell>
                           <TableCell>{order.school_name}</TableCell>
                           <TableCell>{formatCurrency(order.total_amount)}</TableCell>
                           <TableCell><Badge variant="outline">{order.payment_method}</Badge></TableCell>
-                          <TableCell>
-                            {order.receipt_number || '-'}
-                          </TableCell>
                           <TableCell>
                             <div className="flex gap-2 justify-end">
                               <Button 
@@ -727,6 +732,15 @@ export default function AdminDashboard() {
                       ))}
                     </TableBody>
                   </Table>
+                  {pendingOrders.length > 3 && (
+                    <Button 
+                      variant="link" 
+                      className="w-full mt-4" 
+                      onClick={() => setActiveTab('orders')}
+                    >
+                      View all {pendingOrders.length} pending orders →
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -833,10 +847,13 @@ export default function AdminDashboard() {
 
           {/* Orders Tab */}
           <TabsContent value="orders" className="space-y-4">
-            <OrdersTabContent 
-              orders={orders} 
-              getStatusBadge={getStatusBadge}
-              formatCurrency={formatCurrency}
+            <EnhancedOrdersTab 
+              orders={orders}
+              pendingOrders={pendingOrders}
+              onVerifyPayment={handleVerifyPayment}
+              verifyingOrderId={verifyingOrderId}
+              verifyingAction={verifyingAction}
+              onRefresh={fetchDashboardData}
             />
           </TabsContent>
 
