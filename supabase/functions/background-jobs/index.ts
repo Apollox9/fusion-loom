@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +21,16 @@ interface Notification {
   level: string;
   title: string;
   body: string;
+}
+
+interface Order {
+  id: string;
+  total_garments: number;
+}
+
+interface Staff {
+  id: string;
+  role: string;
 }
 
 serve(async (req) => {
@@ -82,7 +92,7 @@ serve(async (req) => {
   }
 })
 
-async function autoConfirmOrders(supabase: ReturnType<typeof createClient>) {
+async function autoConfirmOrders(supabase: SupabaseClient) {
   try {
     console.log('Running auto-confirm orders job...')
     
@@ -106,7 +116,7 @@ async function autoConfirmOrders(supabase: ReturnType<typeof createClient>) {
       return
     }
 
-    for (const order of ordersToConfirm) {
+    for (const order of ordersToConfirm as Order[]) {
       const { error: updateError } = await supabase
         .from('orders')
         .update({
@@ -145,7 +155,7 @@ async function autoConfirmOrders(supabase: ReturnType<typeof createClient>) {
   }
 }
 
-async function updateMachineStatus(supabase: ReturnType<typeof createClient>) {
+async function updateMachineStatus(supabase: SupabaseClient) {
   try {
     console.log('Running update machine status job...')
     
@@ -173,7 +183,7 @@ async function updateMachineStatus(supabase: ReturnType<typeof createClient>) {
   }
 }
 
-async function generateDailyMetrics(supabase: ReturnType<typeof createClient>) {
+async function generateDailyMetrics(supabase: SupabaseClient) {
   try {
     console.log('Running generate daily metrics job...')
     
@@ -210,7 +220,7 @@ async function generateDailyMetrics(supabase: ReturnType<typeof createClient>) {
       return
     }
 
-    for (const staff of staffUsers) {
+    for (const staff of staffUsers as Staff[]) {
       // Get tasks for this staff member for yesterday
       const { data: tasks, error: tasksError } = await supabase
         .from('staff_tasks')
@@ -266,7 +276,7 @@ async function generateDailyMetrics(supabase: ReturnType<typeof createClient>) {
   }
 }
 
-async function cleanupAuditEvents(supabase: ReturnType<typeof createClient>) {
+async function cleanupAuditEvents(supabase: SupabaseClient) {
   try {
     console.log('Running cleanup audit events job...')
     
@@ -292,7 +302,7 @@ async function cleanupAuditEvents(supabase: ReturnType<typeof createClient>) {
   }
 }
 
-async function sendNotificationSummaries(supabase: ReturnType<typeof createClient>) {
+async function sendNotificationSummaries(supabase: SupabaseClient) {
   try {
     console.log('Running send notification summaries job...')
     
