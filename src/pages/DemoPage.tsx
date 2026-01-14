@@ -324,7 +324,7 @@ const DemoPage = () => {
                 <Button 
                   type="submit" 
                   size="lg" 
-                  className="w-full bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all duration-300"
+                  className="w-full bg-gradient-hero hover:shadow-lg hover:scale-[1.02] transition-all duration-300"
                   disabled={isLoading}
                 >
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -349,8 +349,8 @@ const DemoPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Card className="text-center">
               <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
-                  <School className="w-6 h-6 text-primary-foreground" />
+                <div className="w-12 h-12 rounded-lg bg-gradient-hero flex items-center justify-center mx-auto mb-4">
+                  <School className="w-6 h-6 text-white" />
                 </div>
                 <CardTitle>System Setup</CardTitle>
               </CardHeader>
@@ -363,8 +363,8 @@ const DemoPage = () => {
 
             <Card className="text-center">
               <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
-                  <User className="w-6 h-6 text-primary-foreground" />
+                <div className="w-12 h-12 rounded-lg bg-gradient-hero flex items-center justify-center mx-auto mb-4">
+                  <User className="w-6 h-6 text-white" />
                 </div>
                 <CardTitle>Student Experience</CardTitle>
               </CardHeader>
@@ -377,8 +377,8 @@ const DemoPage = () => {
 
             <Card className="text-center">
               <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-6 h-6 text-primary-foreground" />
+                <div className="w-12 h-12 rounded-lg bg-gradient-hero flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-6 h-6 text-white" />
                 </div>
                 <CardTitle>Live Printing</CardTitle>
               </CardHeader>

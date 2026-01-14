@@ -98,32 +98,119 @@ export default function AdminDashboard() {
     role: 'OPERATOR'
   });
 
-  // Request browser notification permission
+  // Request browser notification permission on mount
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          console.log('Notification permission granted');
+        }
+      });
     }
   }, []);
+
+  // Send browser notification helper
+  const sendBrowserNotification = (title: string, body: string) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+        tag: 'admin-notification'
+      });
+    }
+  };
 
   // Fetch notification badge counts
   const fetchBadgeCounts = async () => {
     try {
-      const [demoRes, guestRes, messagesRes] = await Promise.all([
+      const [demoRes, guestRes, messagesRes, pendingRes] = await Promise.all([
         supabase.from('demo_requests').select('id', { count: 'exact' }).eq('is_read', false),
         supabase.from('guest_messages').select('id', { count: 'exact' }).eq('is_read', false),
-        supabase.from('messages').select('id', { count: 'exact' }).neq('sender_role', 'ADMIN')
+        supabase.from('messages').select('id', { count: 'exact' }).neq('sender_role', 'ADMIN'),
+        supabase.from('pending_orders').select('id', { count: 'exact' }).eq('payment_verified', false)
       ]);
       
       setBadgeCounts(prev => ({
         ...prev,
         newDemoRequests: demoRes.count || 0,
         newGuestMessages: guestRes.count || 0,
-        newOrders: pendingOrders.length
+        newOrders: pendingRes.count || 0
       }));
     } catch (error) {
       console.error('Error fetching badge counts:', error);
     }
   };
+
+  // Real-time subscriptions for fast badge updates
+  useEffect(() => {
+    if (profile?.role !== 'ADMIN') return;
+
+    // Subscribe to pending_orders changes
+    const pendingOrdersChannel = supabase
+      .channel('pending-orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_orders' }, (payload) => {
+        fetchBadgeCounts();
+        fetchDashboardData();
+        if (payload.eventType === 'INSERT') {
+          sendBrowserNotification('New Order Submitted!', `A new order has been submitted and is awaiting verification.`);
+        }
+      })
+      .subscribe();
+
+    // Subscribe to demo_requests changes
+    const demoChannel = supabase
+      .channel('demo-requests-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'demo_requests' }, (payload) => {
+        fetchBadgeCounts();
+        if (payload.eventType === 'INSERT') {
+          const newData = payload.new as any;
+          sendBrowserNotification('New Demo Request!', `${newData.school_name} has requested a demo.`);
+        }
+      })
+      .subscribe();
+
+    // Subscribe to guest_messages changes
+    const guestChannel = supabase
+      .channel('guest-messages-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_messages' }, (payload) => {
+        fetchBadgeCounts();
+        if (payload.eventType === 'INSERT') {
+          const newData = payload.new as any;
+          sendBrowserNotification('New Message!', `${newData.name} sent a message: ${newData.subject}`);
+        }
+      })
+      .subscribe();
+
+    // Subscribe to messages changes
+    const messagesChannel = supabase
+      .channel('messages-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+        fetchBadgeCounts();
+        if (payload.eventType === 'INSERT') {
+          const newData = payload.new as any;
+          if (newData.sender_role !== 'ADMIN') {
+            sendBrowserNotification('New Chat Message!', `You have a new message from a school.`);
+          }
+        }
+      })
+      .subscribe();
+
+    // Subscribe to orders changes
+    const ordersChannel = supabase
+      .channel('orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchDashboardData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(pendingOrdersChannel);
+      supabase.removeChannel(demoChannel);
+      supabase.removeChannel(guestChannel);
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(ordersChannel);
+    };
+  }, [profile]);
 
   useEffect(() => {
     if (profile?.role === 'ADMIN') {

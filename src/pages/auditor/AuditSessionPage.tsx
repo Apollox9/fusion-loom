@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, 
@@ -59,12 +60,16 @@ export default function AuditSessionPage() {
   // Search states
   const [classSearchQuery, setClassSearchQuery] = useState('');
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [studentClassFilter, setStudentClassFilter] = useState<string>('all');
   
   // Edit dialogs
   const [showEditSession, setShowEditSession] = useState(false);
   const [showEditClass, setShowEditClass] = useState(false);
   const [showEditStudent, setShowEditStudent] = useState(false);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
+  
+  // Original submitted data (immutable snapshot)
+  const [submittedData, setSubmittedData] = useState<any>(null);
   
   // Edit forms
   const [sessionForm, setSessionForm] = useState({
@@ -97,16 +102,28 @@ export default function AuditSessionPage() {
   }, [classes, classSearchQuery]);
 
   const filteredStudents = useMemo(() => {
-    if (!studentSearchQuery.trim()) return students;
-    const query = studentSearchQuery.toLowerCase();
-    return students.filter(student => {
-      const studentClass = classes.find(c => c.id === student.class_id);
-      return (
-        student.full_name?.toLowerCase().includes(query) ||
-        studentClass?.name?.toLowerCase().includes(query)
-      );
-    });
-  }, [students, studentSearchQuery, classes]);
+    let filtered = students;
+    
+    // First apply class filter
+    if (studentClassFilter !== 'all') {
+      filtered = filtered.filter(student => student.class_id === studentClassFilter);
+    }
+    
+    // Then apply search
+    if (studentSearchQuery.trim()) {
+      const query = studentSearchQuery.toLowerCase();
+      filtered = filtered.filter(student => {
+        const studentClass = classes.find(c => c.id === student.class_id);
+        return (
+          student.full_name?.toLowerCase().includes(query) ||
+          studentClass?.name?.toLowerCase().includes(query)
+        );
+      });
+    }
+    
+    // Sort alphabetically by name
+    return filtered.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+  }, [students, studentSearchQuery, studentClassFilter, classes]);
 
   useEffect(() => {
     if (auditId) {
@@ -131,6 +148,9 @@ export default function AuditSessionPage() {
       // Load existing audit trail
       const existingTrail = (report.report_details as any)?.audit_trail || [];
       setAuditTrail(existingTrail);
+      
+      // Load submitted_data snapshot if exists
+      const existingSubmittedData = report.submitted_data;
 
       // Fetch order data using session_id (external_ref)
       const { data: order, error: orderError } = await supabase
@@ -161,6 +181,41 @@ export default function AuditSessionPage() {
 
       if (studentsError) throw studentsError;
       setStudents(studentsData || []);
+      
+      // If no submitted_data exists, create snapshot from original submitted values
+      if (!existingSubmittedData) {
+        const snapshot = {
+          session: {
+            total_students: order.submitted_total_students || order.total_students,
+            total_garments: order.submitted_total_garments || order.total_garments,
+            total_dark_garments: order.submitted_total_dark_garments || order.total_dark_garments,
+            total_light_garments: order.submitted_total_light_garments || order.total_light_garments,
+            total_classes: order.submitted_total_classes || order.total_classes_to_serve
+          },
+          classes: (classesData || []).map(cls => ({
+            id: cls.id,
+            name: cls.name,
+            submitted_students_count: cls.submitted_students_count || cls.total_students_to_serve_in_class
+          })),
+          students: (studentsData || []).map(student => ({
+            id: student.id,
+            full_name: student.full_name,
+            class_id: student.class_id,
+            submitted_light_garment_count: student.submitted_light_garment_count || student.total_light_garment_count,
+            submitted_dark_garment_count: student.submitted_dark_garment_count || student.total_dark_garment_count
+          }))
+        };
+        
+        setSubmittedData(snapshot);
+        
+        // Save snapshot to database
+        await supabase
+          .from('audit_reports')
+          .update({ submitted_data: snapshot })
+          .eq('id', auditId);
+      } else {
+        setSubmittedData(existingSubmittedData);
+      }
     } catch (error: any) {
       console.error('Error fetching audit data:', error);
       toast.error('Failed to load audit data');
@@ -520,23 +575,23 @@ export default function AuditSessionPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">Total Students</p>
-                      <p className="text-2xl font-bold">{orderData?.total_students || 0}</p>
+                      <p className="text-2xl font-bold">{submittedData?.session?.total_students || orderData?.submitted_total_students || orderData?.total_students || 0}</p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">Total Garments</p>
-                      <p className="text-2xl font-bold">{orderData?.total_garments || 0}</p>
+                      <p className="text-2xl font-bold">{submittedData?.session?.total_garments || orderData?.submitted_total_garments || orderData?.total_garments || 0}</p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">Light Garments</p>
-                      <p className="text-2xl font-bold">{orderData?.total_light_garments || 0}</p>
+                      <p className="text-2xl font-bold">{submittedData?.session?.total_light_garments || orderData?.submitted_total_light_garments || orderData?.total_light_garments || 0}</p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">Dark Garments</p>
-                      <p className="text-2xl font-bold">{orderData?.total_dark_garments || 0}</p>
+                      <p className="text-2xl font-bold">{submittedData?.session?.total_dark_garments || orderData?.submitted_total_dark_garments || orderData?.total_dark_garments || 0}</p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">Total Classes</p>
-                      <p className="text-2xl font-bold">{orderData?.total_classes_to_serve || 0}</p>
+                      <p className="text-2xl font-bold">{submittedData?.session?.total_classes || orderData?.submitted_total_classes || orderData?.total_classes_to_serve || 0}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -707,17 +762,30 @@ export default function AuditSessionPage() {
               <CardHeader>
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
                   <div>
-                    <CardTitle>All Students</CardTitle>
-                    <CardDescription>Review and update student garment counts</CardDescription>
+                    <CardTitle>All Students ({filteredStudents.length})</CardTitle>
+                    <CardDescription>Review and update student garment counts - sorted alphabetically</CardDescription>
                   </div>
-                  <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search students or classes..."
-                      value={studentSearchQuery}
-                      onChange={(e) => setStudentSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Select value={studentClassFilter} onValueChange={setStudentClassFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by class" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Classes</SelectItem>
+                        {classes.map(cls => (
+                          <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search students..."
+                        value={studentSearchQuery}
+                        onChange={(e) => setStudentSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -746,16 +814,25 @@ export default function AuditSessionPage() {
                     ) : (
                       filteredStudents.map((student, index) => {
                         const studentClass = classes.find(c => c.id === student.class_id);
+                        // Get submitted data from snapshot
+                        const submittedStudent = submittedData?.students?.find((s: any) => s.id === student.id);
+                        const submittedLight = submittedStudent?.submitted_light_garment_count ?? student.submitted_light_garment_count ?? student.total_light_garment_count ?? 0;
+                        const submittedDark = submittedStudent?.submitted_dark_garment_count ?? student.submitted_dark_garment_count ?? student.total_dark_garment_count ?? 0;
+                        const hasDiscrepancy = (student.total_light_garment_count !== submittedLight) || (student.total_dark_garment_count !== submittedDark);
                         
                         return (
-                          <TableRow key={student.id}>
+                          <TableRow key={student.id} className={hasDiscrepancy ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell className="font-medium">{student.full_name}</TableCell>
                             <TableCell>{studentClass?.name || 'N/A'}</TableCell>
-                            <TableCell>{student.total_light_garment_count || 0}</TableCell>
-                            <TableCell>{student.total_light_garment_count || 0}</TableCell>
-                            <TableCell>{student.total_dark_garment_count || 0}</TableCell>
-                            <TableCell>{student.total_dark_garment_count || 0}</TableCell>
+                            <TableCell>{submittedLight}</TableCell>
+                            <TableCell className={student.total_light_garment_count !== submittedLight ? 'text-orange-600 font-semibold' : ''}>
+                              {student.total_light_garment_count || 0}
+                            </TableCell>
+                            <TableCell>{submittedDark}</TableCell>
+                            <TableCell className={student.total_dark_garment_count !== submittedDark ? 'text-orange-600 font-semibold' : ''}>
+                              {student.total_dark_garment_count || 0}
+                            </TableCell>
                             <TableCell>
                               <Badge variant={student.is_served ? 'default' : 'secondary'}>
                                 {student.is_served ? 'Served' : 'Pending'}

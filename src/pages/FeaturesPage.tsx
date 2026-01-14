@@ -288,14 +288,14 @@ const FeaturesPage = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-primary to-secondary relative z-10">
+      {/* CTA Section - Hero gradient */}
+      <section className="py-20 px-6 bg-gradient-hero relative z-10">
         <div className="container mx-auto text-center">
           <div className="animate-fade-in-up">
-            <h2 className="text-4xl font-bold text-primary-foreground mb-6 font-display">
+            <h2 className="text-4xl font-bold text-white mb-6 font-display">
               Ready to Experience These Features?
             </h2>
-            <p className="text-xl text-primary-foreground/80 mb-12 max-w-2xl mx-auto">
+            <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
               Join hundreds of schools already leveraging these powerful capabilities 
               to transform their uniform printing operations.
             </p>
@@ -306,7 +306,7 @@ const FeaturesPage = () => {
                 </Button>
               </Link>
               <Link to="/demo">
-                <Button size="lg" variant="outline" className="px-8 py-4 text-lg border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 transition-all duration-300 hover:scale-105">
+                <Button size="lg" variant="outline" className="px-8 py-4 text-lg border-white text-white hover:bg-white/10 transition-all duration-300 hover:scale-105">
                   Schedule Demo
                 </Button>
               </Link>
