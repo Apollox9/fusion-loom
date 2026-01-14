@@ -26,8 +26,10 @@ import {
   Clock,
   User,
   History,
-  Search
+  Search,
+  Download
 } from 'lucide-react';
+import { downloadAuditReport } from '@/utils/auditReportPdfGenerator';
 import { formatDistanceToNow } from 'date-fns';
 
 interface AuditTrailEntry {
@@ -524,7 +526,27 @@ export default function AuditSessionPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  if (auditReport && orderData) {
+                    downloadAuditReport({
+                      auditReport,
+                      orderData,
+                      auditorName: profile?.full_name || 'Unknown',
+                      submittedData,
+                      auditTrail,
+                      classes,
+                      students
+                    });
+                    toast.success('Audit report generated successfully!');
+                  }
+                }}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Generate Report
+              </Button>
               <Button variant="outline" onClick={() => setShowAuditTrail(true)}>
                 <History className="w-4 h-4 mr-2" />
                 Audit Trail ({auditTrail.length})
