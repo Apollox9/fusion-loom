@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useRoleBasedAuth } from '@/hooks/useRoleBasedAuth';
@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, 
@@ -27,7 +28,8 @@ import {
   User,
   History,
   Search,
-  Download
+  Download,
+  CheckSquare
 } from 'lucide-react';
 import { downloadAuditReport } from '@/utils/auditReportPdfGenerator';
 import { formatDistanceToNow } from 'date-fns';
@@ -497,6 +499,99 @@ export default function AuditSessionPage() {
     return students.filter(s => s.class_id === classId);
   };
 
+  // Calculate collected totals from actual data (auto-sync)
+  const calculatedTotals = useMemo(() => {
+    const totalStudents = students.length;
+    const totalLightGarments = students.reduce((sum, s) => sum + (s.total_light_garment_count || 0), 0);
+    const totalDarkGarments = students.reduce((sum, s) => sum + (s.total_dark_garment_count || 0), 0);
+    const totalGarments = totalLightGarments + totalDarkGarments;
+    return { totalStudents, totalLightGarments, totalDarkGarments, totalGarments };
+  }, [students]);
+
+  // Audited counts
+  const auditedClassesCount = useMemo(() => {
+    return classes.filter(cls => cls.is_attended).length;
+  }, [classes]);
+
+  const auditedStudentsCount = useMemo(() => {
+    return students.filter(s => s.is_served).length;
+  }, [students]);
+
+  // Toggle class audited status
+  const handleToggleClassAudited = async (cls: any) => {
+    try {
+      const newStatus = !cls.is_attended;
+      const { error } = await supabase
+        .from('classes')
+        .update({ is_attended: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', cls.id);
+
+      if (error) throw error;
+
+      // Add audit trail entry
+      const entry = addAuditTrailEntry(
+        'UPDATE',
+        'is_attended',
+        cls.is_attended ? 'true' : 'false',
+        newStatus ? 'true' : 'false',
+        'class',
+        cls.id,
+        cls.name
+      );
+
+      const updatedTrail = [...auditTrail, entry];
+      await supabase
+        .from('audit_reports')
+        .update({ report_details: { audit_trail: updatedTrail } as any })
+        .eq('id', auditId);
+
+      setAuditTrail(updatedTrail);
+      toast.success(`Class ${cls.name} marked as ${newStatus ? 'Audited' : 'Pending'}`);
+      fetchAuditData();
+    } catch (error: any) {
+      toast.error('Failed to update class status');
+    }
+  };
+
+  // Toggle student audited status  
+  const handleToggleStudentAudited = async (student: any) => {
+    try {
+      const newStatus = !student.is_served;
+      const { error } = await supabase
+        .from('students')
+        .update({ is_served: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', student.id);
+
+      if (error) throw error;
+
+      // Add audit trail entry
+      const entry = addAuditTrailEntry(
+        'UPDATE',
+        'is_served',
+        student.is_served ? 'true' : 'false',
+        newStatus ? 'true' : 'false',
+        'student',
+        student.id,
+        student.full_name
+      );
+
+      const updatedTrail = [...auditTrail, entry];
+      await supabase
+        .from('audit_reports')
+        .update({ 
+          report_details: { audit_trail: updatedTrail } as any,
+          total_students_audited: newStatus ? (auditReport?.total_students_audited || 0) + 1 : Math.max(0, (auditReport?.total_students_audited || 0) - 1)
+        })
+        .eq('id', auditId);
+
+      setAuditTrail(updatedTrail);
+      toast.success(`Student ${student.full_name} marked as ${newStatus ? 'Audited' : 'Pending'}`);
+      fetchAuditData();
+    } catch (error: any) {
+      toast.error('Failed to update student status');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -623,7 +718,7 @@ export default function AuditSessionPage() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle>Collected Data (Audit)</CardTitle>
-                    <CardDescription>Data collected during audit</CardDescription>
+                    <CardDescription>Auto-calculated from students & classes</CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={handleEditSessionClick}>
                     <Edit className="w-4 h-4 mr-2" />
@@ -634,23 +729,23 @@ export default function AuditSessionPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
                       <p className="text-sm text-muted-foreground">Total Students</p>
-                      <p className="text-2xl font-bold">{orderData?.total_students || 0}</p>
+                      <p className="text-2xl font-bold">{calculatedTotals.totalStudents}</p>
                     </div>
                     <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
                       <p className="text-sm text-muted-foreground">Total Garments</p>
-                      <p className="text-2xl font-bold">{orderData?.total_garments || 0}</p>
+                      <p className="text-2xl font-bold">{calculatedTotals.totalGarments}</p>
                     </div>
                     <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
                       <p className="text-sm text-muted-foreground">Light Garments</p>
-                      <p className="text-2xl font-bold">{orderData?.total_light_garments || 0}</p>
+                      <p className="text-2xl font-bold">{calculatedTotals.totalLightGarments}</p>
                     </div>
                     <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
                       <p className="text-sm text-muted-foreground">Dark Garments</p>
-                      <p className="text-2xl font-bold">{orderData?.total_dark_garments || 0}</p>
+                      <p className="text-2xl font-bold">{calculatedTotals.totalDarkGarments}</p>
                     </div>
                     <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
                       <p className="text-sm text-muted-foreground">Total Classes</p>
-                      <p className="text-2xl font-bold">{orderData?.total_classes_to_serve || 0}</p>
+                      <p className="text-2xl font-bold">{classes.length}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -701,14 +796,23 @@ export default function AuditSessionPage() {
                     <CardTitle>Classes in Session</CardTitle>
                     <CardDescription>Review and update class data</CardDescription>
                   </div>
-                  <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search classes..."
-                      value={classSearchQuery}
-                      onChange={(e) => setClassSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
+                  <div className="flex items-center gap-4">
+                    {/* Audited Count Card */}
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                      <CheckSquare className="w-4 h-4 text-emerald-600" />
+                      <span className="text-sm font-medium text-emerald-700">
+                        Audited: {auditedClassesCount}/{classes.length}
+                      </span>
+                    </div>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search classes..."
+                        value={classSearchQuery}
+                        onChange={(e) => setClassSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -716,11 +820,13 @@ export default function AuditSessionPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <CheckSquare className="w-4 h-4" />
+                      </TableHead>
                       <TableHead>#</TableHead>
                       <TableHead>Class Name</TableHead>
                       <TableHead>Students (Submitted)</TableHead>
                       <TableHead>Students (Collected)</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead>Discrepancy</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
@@ -735,21 +841,24 @@ export default function AuditSessionPage() {
                     ) : (
                       filteredClasses.map((cls, index) => {
                         const classStudents = getStudentsForClass(cls.id);
-                        const submittedCount = classStudents.length;
-                        const collectedCount = cls.total_students_to_serve_in_class || classStudents.length;
+                        const submittedClass = submittedData?.classes?.find((c: any) => c.id === cls.id);
+                        const submittedCount = submittedClass?.submitted_students_count || cls.total_students_to_serve_in_class || classStudents.length;
+                        const collectedCount = classStudents.length;
                         const hasDiscrepancy = submittedCount !== collectedCount;
                         
                         return (
-                          <TableRow key={cls.id}>
+                          <TableRow key={cls.id} className={cls.is_attended ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''}>
+                            <TableCell>
+                              <Checkbox
+                                checked={cls.is_attended}
+                                onCheckedChange={() => handleToggleClassAudited(cls)}
+                                className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                              />
+                            </TableCell>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell className="font-medium">{cls.name}</TableCell>
                             <TableCell>{submittedCount}</TableCell>
                             <TableCell>{collectedCount}</TableCell>
-                            <TableCell>
-                              <Badge variant={cls.is_attended ? 'default' : 'secondary'}>
-                                {cls.is_attended ? 'Attended' : 'Pending'}
-                              </Badge>
-                            </TableCell>
                             <TableCell>
                               {hasDiscrepancy ? (
                                 <Badge variant="destructive" className="gap-1">
@@ -787,7 +896,14 @@ export default function AuditSessionPage() {
                     <CardTitle>All Students ({filteredStudents.length})</CardTitle>
                     <CardDescription>Review and update student garment counts - sorted alphabetically</CardDescription>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 items-center">
+                    {/* Audited Count Card */}
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                      <CheckSquare className="w-4 h-4 text-emerald-600" />
+                      <span className="text-sm font-medium text-emerald-700">
+                        Audited: {auditedStudentsCount}/{students.length}
+                      </span>
+                    </div>
                     <Select value={studentClassFilter} onValueChange={setStudentClassFilter}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Filter by class" />
@@ -815,6 +931,9 @@ export default function AuditSessionPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <CheckSquare className="w-4 h-4" />
+                      </TableHead>
                       <TableHead>#</TableHead>
                       <TableHead>Student Name</TableHead>
                       <TableHead>Class</TableHead>
@@ -822,7 +941,6 @@ export default function AuditSessionPage() {
                       <TableHead>Light (Collected)</TableHead>
                       <TableHead>Dark (Submitted)</TableHead>
                       <TableHead>Dark (Collected)</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -843,7 +961,14 @@ export default function AuditSessionPage() {
                         const hasDiscrepancy = (student.total_light_garment_count !== submittedLight) || (student.total_dark_garment_count !== submittedDark);
                         
                         return (
-                          <TableRow key={student.id} className={hasDiscrepancy ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
+                          <TableRow key={student.id} className={student.is_served ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : hasDiscrepancy ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
+                            <TableCell>
+                              <Checkbox
+                                checked={student.is_served}
+                                onCheckedChange={() => handleToggleStudentAudited(student)}
+                                className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                              />
+                            </TableCell>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell className="font-medium">{student.full_name}</TableCell>
                             <TableCell>{studentClass?.name || 'N/A'}</TableCell>
@@ -854,11 +979,6 @@ export default function AuditSessionPage() {
                             <TableCell>{submittedDark}</TableCell>
                             <TableCell className={student.total_dark_garment_count !== submittedDark ? 'text-orange-600 font-semibold' : ''}>
                               {student.total_dark_garment_count || 0}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={student.is_served ? 'default' : 'secondary'}>
-                                {student.is_served ? 'Served' : 'Pending'}
-                              </Badge>
                             </TableCell>
                             <TableCell>
                               <Button variant="ghost" size="sm" onClick={() => handleEditStudentClick(student)}>
