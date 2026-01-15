@@ -69,50 +69,70 @@ interface AuditReportData {
   auditTrail: AuditTrailEntry[];
   classes: any[];
   students: any[];
+  logoBase64?: string;
+}
+
+// Convert logo to base64 for PDF embedding
+async function loadLogoAsBase64(): Promise<string | null> {
+  try {
+    const response = await fetch('/src/assets/project-fusion-logo.png');
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 export function generateAuditReportPDF(data: AuditReportData): jsPDF {
-  const { auditReport, orderData, auditorName, submittedData, auditTrail, classes, students } = data;
+  const { auditReport, orderData, auditorName, submittedData, auditTrail, classes, students, logoBase64 } = data;
   
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   let currentY = 15;
+  let currentPage = 1;
   
   const addPageIfNeeded = (requiredSpace: number) => {
     if (currentY + requiredSpace > pageHeight - 25) {
       doc.addPage();
+      currentPage++;
       currentY = 20;
-      addFooter();
     }
   };
 
-  const addFooter = () => {
-    const footerY = pageHeight - 10;
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text('©2025 Blaqlogic Digitals. All rights reserved.', pageWidth / 2, footerY, { align: 'center' });
-    doc.text(`Page ${doc.getNumberOfPages()}`, pageWidth - 15, footerY, { align: 'right' });
-  };
-
-  // ===== HEADER =====
-  doc.setFontSize(28);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(41, 128, 185);
-  doc.text('PROJECT FUSION', pageWidth / 2, currentY, { align: 'center' });
+  // ===== HEADER WITH LOGO =====
+  // Try to add logo image, fallback to text if not available
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 30, currentY - 5, 60, 15);
+      currentY += 15;
+    } catch {
+      // Fallback to text
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(41, 128, 185);
+      doc.text('PROJECT FUSION', pageWidth / 2, currentY, { align: 'center' });
+      currentY += 8;
+    }
+  } else {
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(41, 128, 185);
+    doc.text('PROJECT FUSION', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 8;
+  }
   
-  currentY += 8;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(100, 100, 100);
-  doc.text('We make it permanent.', pageWidth / 2, currentY, { align: 'center' });
-  
-  currentY += 8;
+  currentY += 3;
   doc.setDrawColor(41, 128, 185);
   doc.setLineWidth(0.5);
   doc.line(15, currentY, pageWidth - 15, currentY);
   
-  currentY += 10;
+  currentY += 8;
 
   // ===== REPORT TITLE =====
   doc.setFontSize(18);
@@ -120,7 +140,7 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
   doc.setTextColor(0, 0, 0);
   doc.text('SESSION AUDIT REPORT', pageWidth / 2, currentY, { align: 'center' });
   
-  currentY += 12;
+  currentY += 10;
 
   // ===== REPORT META INFO =====
   doc.setFontSize(10);
@@ -140,20 +160,20 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
     doc.text(label, 15, currentY);
     doc.setFont('helvetica', 'normal');
     doc.text(value || 'N/A', 55, currentY);
-    currentY += 6;
+    currentY += 5;
   });
   
-  currentY += 5;
+  currentY += 3;
   doc.setDrawColor(200, 200, 200);
   doc.line(15, currentY, pageWidth - 15, currentY);
-  currentY += 10;
+  currentY += 6;
 
   // ===== SCHOOL INFORMATION =====
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(41, 128, 185);
   doc.text('School Information', 15, currentY);
-  currentY += 8;
+  currentY += 5;
   
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
@@ -170,19 +190,19 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
     doc.text(label, 15, currentY);
     doc.setFont('helvetica', 'normal');
     doc.text(value || 'N/A', 55, currentY);
-    currentY += 6;
+    currentY += 5;
   });
   
-  currentY += 8;
+  currentY += 6;
 
   // ===== DATA COMPARISON =====
-  addPageIfNeeded(70);
+  addPageIfNeeded(60);
   
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(41, 128, 185);
   doc.text('Data Comparison', 15, currentY);
-  currentY += 10;
+  currentY += 5;
 
   const submittedSession = submittedData?.session;
   
@@ -214,12 +234,13 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
     },
     styles: {
       fontSize: 9,
-      cellPadding: 4,
+      cellPadding: 3,
       halign: 'center'
     },
     columnStyles: {
       0: { halign: 'left', fontStyle: 'bold' }
     },
+    margin: { bottom: 20 },
     didParseCell: function(data) {
       if (data.section === 'body' && data.column.index === 3) {
         const val = parseInt(data.cell.text[0] || '0');
@@ -234,16 +255,16 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
     }
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 15;
+  currentY = (doc as any).lastAutoTable.finalY + 8;
 
   // ===== AUDIT SUMMARY =====
-  addPageIfNeeded(50);
+  addPageIfNeeded(40);
   
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(41, 128, 185);
   doc.text('Audit Summary', 15, currentY);
-  currentY += 10;
+  currentY += 5;
 
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
@@ -261,20 +282,20 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
     doc.text(label, 15, currentY);
     doc.setFont('helvetica', 'normal');
     doc.text(value, 75, currentY);
-    currentY += 6;
+    currentY += 5;
   });
   
-  currentY += 10;
+  currentY += 6;
 
   // ===== CLASS SUMMARY =====
   if (classes.length > 0) {
-    addPageIfNeeded(40);
+    addPageIfNeeded(35);
     
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(41, 128, 185);
     doc.text('Classes Summary', 15, currentY);
-    currentY += 10;
+    currentY += 5;
 
     const classTableData = classes.map((cls, index) => {
       const submittedClass = submittedData?.classes?.find(c => c.id === cls.id);
@@ -301,7 +322,7 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
       },
       styles: {
         fontSize: 8,
-        cellPadding: 3
+        cellPadding: 2
       },
       columnStyles: {
         0: { halign: 'center', cellWidth: 12 },
@@ -309,23 +330,24 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
         2: { halign: 'center' },
         3: { halign: 'center' },
         4: { halign: 'center' }
-      }
+      },
+      margin: { bottom: 20 }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 15;
+    currentY = (doc as any).lastAutoTable.finalY + 8;
   }
 
   // ===== DISCREPANCIES LIST =====
   const discrepancies = auditTrail.filter(entry => entry.action === 'UPDATE');
   
   if (discrepancies.length > 0) {
-    addPageIfNeeded(50);
+    addPageIfNeeded(40);
     
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(220, 53, 69);
     doc.text('Discrepancies Found', 15, currentY);
-    currentY += 10;
+    currentY += 5;
 
     const discrepancyData = discrepancies.map((entry, index) => [
       String(index + 1),
@@ -360,21 +382,29 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
         4: { halign: 'center', cellWidth: 15 },
         5: { halign: 'center', cellWidth: 15 },
         6: { halign: 'center', cellWidth: 30 }
-      }
+      },
+      margin: { bottom: 20 }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 15;
+    currentY = (doc as any).lastAutoTable.finalY + 8;
   }
 
   // ===== AUDIT TRAIL =====
   if (auditTrail.length > 0) {
-    addPageIfNeeded(50);
+    addPageIfNeeded(40);
     
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(41, 128, 185);
     doc.text('Complete Audit Trail', 15, currentY);
-    currentY += 10;
+    currentY += 5;
+
+    // Format field names properly - remove underscores and format nicely
+    const formatFieldName = (field: string): string => {
+      return field
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase());
+    };
 
     const trailData = auditTrail.map((entry, index) => [
       String(index + 1),
@@ -382,7 +412,7 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
       entry.auditor_name || 'Unknown',
       `${entry.action} ${entry.entity_type}`,
       entry.entity_name || 'N/A',
-      `${entry.field}: ${entry.old_value} → ${entry.new_value}`
+      `${formatFieldName(entry.field)}: ${entry.old_value} → ${entry.new_value}`
     ]);
 
     autoTable(doc, {
@@ -398,34 +428,36 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
       },
       styles: {
         fontSize: 7,
-        cellPadding: 2
+        cellPadding: 2,
+        overflow: 'linebreak'
       },
       columnStyles: {
         0: { halign: 'center', cellWidth: 8 },
-        1: { halign: 'center', cellWidth: 32 },
-        2: { halign: 'left', cellWidth: 25 },
-        3: { halign: 'center', cellWidth: 25 },
-        4: { halign: 'left', cellWidth: 30 },
-        5: { halign: 'left' }
-      }
+        1: { halign: 'center', cellWidth: 30 },
+        2: { halign: 'left', cellWidth: 22 },
+        3: { halign: 'center', cellWidth: 22 },
+        4: { halign: 'left', cellWidth: 28 },
+        5: { halign: 'left', cellWidth: 'auto', overflow: 'linebreak' }
+      },
+      margin: { bottom: 20 }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 15;
+    currentY = (doc as any).lastAutoTable.finalY + 8;
   }
 
   // ===== SIGNATURE SECTION =====
-  addPageIfNeeded(50);
+  addPageIfNeeded(60);
   
-  currentY += 10;
+  currentY += 5;
   doc.setDrawColor(200, 200, 200);
   doc.line(15, currentY, pageWidth - 15, currentY);
-  currentY += 15;
+  currentY += 10;
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('Verification & Signatures', 15, currentY);
-  currentY += 12;
+  currentY += 10;
 
   // Auditor signature line
   doc.setFontSize(10);
@@ -441,21 +473,25 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
   doc.line(40, currentY, 100, currentY);
   doc.text('Date:', 110, currentY);
   doc.line(125, currentY, 180, currentY);
-  currentY += 15;
+  currentY += 20;
 
   // ===== OFFICIAL STAMP AREA =====
   doc.setDrawColor(41, 128, 185);
   doc.setLineWidth(1);
-  doc.rect(pageWidth - 65, currentY - 25, 50, 35);
+  doc.rect(pageWidth - 65, currentY - 10, 50, 35);
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text('Official Stamp', pageWidth - 40, currentY - 5, { align: 'center' });
+  doc.text('Official Stamp', pageWidth - 40, currentY + 10, { align: 'center' });
 
-  // Add footer to all pages
+  // Add footer to all pages with proper page numbering
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    addFooter();
+    const footerY = pageHeight - 10;
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text('©2026 Blaqlogic Digitals. All rights reserved.', pageWidth / 2, footerY, { align: 'center' });
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - 15, footerY, { align: 'right' });
   }
 
   return doc;

@@ -72,40 +72,37 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   // Reset text color
   doc.setTextColor(0, 0, 0);
 
-  // Header Section
+  // Header Section with PROJECT FUSION title
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(41, 128, 185);
   doc.text('PROJECT FUSION', pageWidth / 2, currentY, { align: 'center' });
-  
-  currentY += 7;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'italic');
-  doc.text('We make it permanent.', pageWidth / 2, currentY, { align: 'center' });
   
   currentY += 5;
   doc.setDrawColor(200, 200, 200);
   doc.line(15, currentY, pageWidth - 15, currentY);
   
-  currentY += 8;
+  currentY += 6;
 
   // School and Class Info
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
   doc.text(`School: ${schoolName}`, 15, currentY);
   doc.text(`Class: ${classData.className}`, pageWidth - 15, currentY, { align: 'right' });
   
-  currentY += 8;
+  currentY += 6;
 
   // Form Title
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.text('STUDENTS GARMENT INFORMATION AND PAYMENTS FORM', pageWidth / 2, currentY, { align: 'center' });
   
-  currentY += 5;
+  currentY += 4;
   doc.setDrawColor(220, 220, 220);
   doc.line(15, currentY, pageWidth - 15, currentY);
   
-  currentY += 8;
+  currentY += 6;
 
   // Table
   const tableData = classData.students.map((student, index) => [
@@ -258,8 +255,8 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   const neutralItems = [
-    'Red (Bright -> black ink; Deep -> white ink)',
-    'Orange (Lighter -> black; Burnt -> white)',
+    'Red (Bright → black ink; Deep → white ink)',
+    'Orange (Lighter → black; Burnt → white)',
     'Medium Grey (Depends on undertone)',
     'Turquoise / Aqua',
     'Gold / Mustard',
@@ -267,7 +264,7 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   ];
   
   neutralItems.forEach((item) => {
-    doc.text('- ' + item, 20, currentY);
+    doc.text('• ' + item, 20, currentY);
     currentY += 5;
   });
 
@@ -279,7 +276,7 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   doc.setTextColor(100, 100, 100);
   doc.text('Return this form to your class monitor after completion.', pageWidth / 2, pageHeight - 15, { align: 'center' });
   doc.setFontSize(8);
-  doc.text('©2025 Blaqlogic Digitals. All rights reserved.', pageWidth / 2, pageHeight - 10, { align: 'center' });
+  doc.text('©2026 Blaqlogic Digitals. All rights reserved.', pageWidth / 2, pageHeight - 10, { align: 'center' });
 
   return doc;
 }

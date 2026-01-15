@@ -9,6 +9,7 @@ import InstagramIcon from '@/assets/icons/instagram.svg';
 import TwitterIcon from '@/assets/icons/twitter.svg';
 import YoutubeIcon from '@/assets/icons/youtube.svg';
 import ProjectFusionLogo from '@/assets/project-fusion-logo.png';
+import ProjectFusionLogoMono from '@/assets/project-fusion-logo-mono.png';
 
 // Animated Counter Component
 const AnimatedCounter = ({
@@ -329,9 +330,9 @@ const Index = () => {
             <div className="md:col-span-2">
               <div className="flex items-center space-x-3 mb-4">
                 <img 
-                  src={ProjectFusionLogo} 
+                  src={ProjectFusionLogoMono} 
                   alt="Project Fusion" 
-                  className="h-10 w-auto object-contain brightness-0 invert"
+                  className="h-8 w-auto object-contain"
                 />
               </div>
               <p className="text-gray-300 max-w-md leading-relaxed">
