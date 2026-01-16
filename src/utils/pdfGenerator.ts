@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ProjectFusionLogo from '@/assets/project-fusion-logo.png';
 
 interface Student {
   fullName: string;
@@ -46,8 +47,8 @@ const COLORS = {
     { name: 'Midnight Blue', color: [25, 25, 112] }
   ],
   neutral: [
-    'Red (Bright → black ink; Deep → white ink)',
-    'Orange (Lighter → black; Burnt → white)',
+    'Red (Bright - black ink; Deep - white ink)',
+    'Orange (Lighter - black; Burnt - white)',
     'Medium Grey (Depends on undertone)',
     'Turquoise / Aqua',
     'Gold / Mustard',
@@ -55,11 +56,30 @@ const COLORS = {
   ]
 };
 
-export function generateClassFormPDF(classData: ClassData, schoolName: string): jsPDF {
+// Load logo as base64 for PDF embedding
+async function loadLogoAsBase64(): Promise<string | null> {
+  try {
+    const response = await fetch(ProjectFusionLogo);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function generateClassFormPDF(classData: ClassData, schoolName: string): Promise<jsPDF> {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   let currentY = 15;
+
+  // Load logo
+  const logoBase64 = await loadLogoAsBase64();
 
   // Add watermark
   doc.setFontSize(80);
@@ -72,13 +92,27 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   // Reset text color
   doc.setTextColor(0, 0, 0);
 
-  // Header Section with PROJECT FUSION title
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(41, 128, 185);
-  doc.text('PROJECT FUSION', pageWidth / 2, currentY, { align: 'center' });
+  // Header Section with PROJECT FUSION logo
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 30, currentY - 5, 60, 15);
+      currentY += 15;
+    } catch {
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(41, 128, 185);
+      doc.text('PROJECT FUSION', pageWidth / 2, currentY, { align: 'center' });
+      currentY += 8;
+    }
+  } else {
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(41, 128, 185);
+    doc.text('PROJECT FUSION', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 8;
+  }
   
-  currentY += 5;
+  currentY += 3;
   doc.setDrawColor(200, 200, 200);
   doc.line(15, currentY, pageWidth - 15, currentY);
   
@@ -165,9 +199,20 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   doc.addPage();
   currentY = 15;
 
+  // Add logo on page 2 as well
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 30, currentY - 5, 60, 15);
+      currentY += 18;
+    } catch {
+      currentY += 5;
+    }
+  }
+
   // Color Guidance Section
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
   doc.text('COLOR GUIDANCE FOR INK SELECTION', pageWidth / 2, currentY, { align: 'center' });
   currentY += 10;
 
@@ -255,8 +300,8 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   const neutralItems = [
-    'Red (Bright → black ink; Deep → white ink)',
-    'Orange (Lighter → black; Burnt → white)',
+    'Red (Bright - black ink; Deep - white ink)',
+    'Orange (Lighter - black; Burnt - white)',
     'Medium Grey (Depends on undertone)',
     'Turquoise / Aqua',
     'Gold / Mustard',
@@ -264,19 +309,27 @@ export function generateClassFormPDF(classData: ClassData, schoolName: string): 
   ];
   
   neutralItems.forEach((item) => {
-    doc.text('• ' + item, 20, currentY);
+    doc.text('\u2022 ' + item, 20, currentY);
     currentY += 5;
   });
 
-  currentY += 5;
-
-  // Footer
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(100, 100, 100);
-  doc.text('Return this form to your class monitor after completion.', pageWidth / 2, pageHeight - 15, { align: 'center' });
-  doc.setFontSize(8);
-  doc.text('©2026 Blaqlogic Digitals. All rights reserved.', pageWidth / 2, pageHeight - 10, { align: 'center' });
+  // Add page numbering and footer to all pages
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    const footerY = pageHeight - 10;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(100, 100, 100);
+    
+    if (i === 1) {
+      doc.text('Return this form to your class monitor after completion.', pageWidth / 2, footerY - 5, { align: 'center' });
+    }
+    
+    doc.setFontSize(8);
+    doc.text('\u00A92026 Blaqlogic Digitals. All rights reserved.', pageWidth / 2, footerY, { align: 'center' });
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - 15, footerY, { align: 'right' });
+  }
 
   return doc;
 }

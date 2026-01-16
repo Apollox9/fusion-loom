@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
+import ProjectFusionLogo from '@/assets/project-fusion-logo.png';
 
 interface AuditTrailEntry {
   timestamp: string;
@@ -72,10 +73,10 @@ interface AuditReportData {
   logoBase64?: string;
 }
 
-// Convert logo to base64 for PDF embedding
+// Load logo as base64 for PDF embedding
 async function loadLogoAsBase64(): Promise<string | null> {
   try {
-    const response = await fetch('/src/assets/project-fusion-logo.png');
+    const response = await fetch(ProjectFusionLogo);
     const blob = await response.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -88,31 +89,37 @@ async function loadLogoAsBase64(): Promise<string | null> {
   }
 }
 
-export function generateAuditReportPDF(data: AuditReportData): jsPDF {
-  const { auditReport, orderData, auditorName, submittedData, auditTrail, classes, students, logoBase64 } = data;
+// Format field names properly - remove underscores and format nicely
+const formatFieldName = (field: string): string => {
+  return field
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase());
+};
+
+export async function generateAuditReportPDF(data: AuditReportData): Promise<jsPDF> {
+  const { auditReport, orderData, auditorName, submittedData, auditTrail, classes, students } = data;
   
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   let currentY = 15;
-  let currentPage = 1;
+  
+  // Load logo
+  const logoBase64 = await loadLogoAsBase64();
   
   const addPageIfNeeded = (requiredSpace: number) => {
     if (currentY + requiredSpace > pageHeight - 25) {
       doc.addPage();
-      currentPage++;
       currentY = 20;
     }
   };
 
   // ===== HEADER WITH LOGO =====
-  // Try to add logo image, fallback to text if not available
   if (logoBase64) {
     try {
       doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 30, currentY - 5, 60, 15);
       currentY += 15;
     } catch {
-      // Fallback to text
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(41, 128, 185);
@@ -151,7 +158,7 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
     ['Report ID:', auditReport.id.slice(0, 8).toUpperCase()],
     ['Session ID:', auditReport.session_id],
     ['Auditor:', auditorName],
-    ['Date Generated:', format(new Date(), 'MMMM d, yyyy • h:mm a')],
+    ['Date Generated:', format(new Date(), 'MMMM d, yyyy \u2022 h:mm a')],
     ['Audit Status:', auditReport.status]
   ];
   
@@ -206,6 +213,13 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
 
   const submittedSession = submittedData?.session;
   
+  // Calculate collected totals from actual student data (auto-calculated)
+  const collectedStudents = students.length;
+  const collectedLightGarments = students.reduce((sum, s) => sum + (s.total_light_garment_count || 0), 0);
+  const collectedDarkGarments = students.reduce((sum, s) => sum + (s.total_dark_garment_count || 0), 0);
+  const collectedGarments = collectedLightGarments + collectedDarkGarments;
+  const collectedClasses = classes.length;
+  
   const subStudents = submittedSession?.total_students ?? orderData.total_students ?? 0;
   const subGarments = submittedSession?.total_garments ?? orderData.total_garments ?? 0;
   const subLight = submittedSession?.total_light_garments ?? orderData.total_light_garments ?? 0;
@@ -214,11 +228,11 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
   
   const comparisonData = [
     ['Metric', 'Submitted', 'Collected', 'Discrepancy'],
-    ['Total Students', String(subStudents), String(orderData.total_students || 0), String((orderData.total_students || 0) - subStudents)],
-    ['Total Garments', String(subGarments), String(orderData.total_garments || 0), String((orderData.total_garments || 0) - subGarments)],
-    ['Light Garments', String(subLight), String(orderData.total_light_garments || 0), String((orderData.total_light_garments || 0) - subLight)],
-    ['Dark Garments', String(subDark), String(orderData.total_dark_garments || 0), String((orderData.total_dark_garments || 0) - subDark)],
-    ['Total Classes', String(subClasses), String(orderData.total_classes_to_serve || 0), String((orderData.total_classes_to_serve || 0) - subClasses)]
+    ['Total Students', String(subStudents), String(collectedStudents), String(collectedStudents - subStudents)],
+    ['Total Garments', String(subGarments), String(collectedGarments), String(collectedGarments - subGarments)],
+    ['Light Garments', String(subLight), String(collectedLightGarments), String(collectedLightGarments - subLight)],
+    ['Dark Garments', String(subDark), String(collectedDarkGarments), String(collectedDarkGarments - subDark)],
+    ['Total Classes', String(subClasses), String(collectedClasses), String(collectedClasses - subClasses)]
   ];
 
   autoTable(doc, {
@@ -255,7 +269,7 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
     }
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 8;
+  currentY = (doc as any).lastAutoTable.finalY + 6;
 
   // ===== AUDIT SUMMARY =====
   addPageIfNeeded(40);
@@ -305,13 +319,13 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
         cls.name || 'Unknown',
         String(submittedClass?.submitted_students_count || cls.total_students_to_serve_in_class || 0),
         String(studentsInClass.length),
-        cls.is_attended ? 'Yes' : 'No'
+        cls.is_audited ? 'Yes' : 'No'
       ];
     });
 
     autoTable(doc, {
       startY: currentY,
-      head: [['#', 'Class Name', 'Students (Submitted)', 'Students (Collected)', 'Attended']],
+      head: [['#', 'Class Name', 'Students (Submitted)', 'Students (Collected)', 'Audited']],
       body: classTableData,
       theme: 'striped',
       headStyles: {
@@ -334,7 +348,7 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
       margin: { bottom: 20 }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 8;
+    currentY = (doc as any).lastAutoTable.finalY + 6;
   }
 
   // ===== DISCREPANCIES LIST =====
@@ -353,7 +367,7 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
       String(index + 1),
       entry.entity_type.charAt(0).toUpperCase() + entry.entity_type.slice(1),
       entry.entity_name || 'Unknown',
-      entry.field.replace(/_/g, ' '),
+      formatFieldName(entry.field),
       String(entry.old_value),
       String(entry.new_value),
       format(new Date(entry.timestamp), 'MMM d, h:mm a')
@@ -386,7 +400,7 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
       margin: { bottom: 20 }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 8;
+    currentY = (doc as any).lastAutoTable.finalY + 6;
   }
 
   // ===== AUDIT TRAIL =====
@@ -399,20 +413,13 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
     doc.text('Complete Audit Trail', 15, currentY);
     currentY += 5;
 
-    // Format field names properly - remove underscores and format nicely
-    const formatFieldName = (field: string): string => {
-      return field
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, l => l.toUpperCase());
-    };
-
     const trailData = auditTrail.map((entry, index) => [
       String(index + 1),
       format(new Date(entry.timestamp), 'MMM d, h:mm:ss a'),
       entry.auditor_name || 'Unknown',
       `${entry.action} ${entry.entity_type}`,
       entry.entity_name || 'N/A',
-      `${formatFieldName(entry.field)}: ${entry.old_value} → ${entry.new_value}`
+      `${formatFieldName(entry.field)}: ${entry.old_value} \u2192 ${entry.new_value}`
     ]);
 
     autoTable(doc, {
@@ -428,8 +435,9 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
       },
       styles: {
         fontSize: 7,
-        cellPadding: 2,
-        overflow: 'linebreak'
+        cellPadding: 3,
+        overflow: 'linebreak',
+        minCellHeight: 8
       },
       columnStyles: {
         0: { halign: 'center', cellWidth: 8 },
@@ -439,14 +447,14 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
         4: { halign: 'left', cellWidth: 28 },
         5: { halign: 'left', cellWidth: 'auto', overflow: 'linebreak' }
       },
-      margin: { bottom: 20 }
+      margin: { bottom: 25 }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 8;
+    currentY = (doc as any).lastAutoTable.finalY + 6;
   }
 
   // ===== SIGNATURE SECTION =====
-  addPageIfNeeded(60);
+  addPageIfNeeded(80);
   
   currentY += 5;
   doc.setDrawColor(200, 200, 200);
@@ -466,22 +474,23 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
   doc.line(40, currentY, 100, currentY);
   doc.text('Date:', 110, currentY);
   doc.line(125, currentY, 180, currentY);
-  currentY += 12;
+  currentY += 15;
 
   // Supervisor signature line
   doc.text('Supervisor:', 15, currentY);
   doc.line(40, currentY, 100, currentY);
   doc.text('Date:', 110, currentY);
   doc.line(125, currentY, 180, currentY);
-  currentY += 20;
+  currentY += 25;
 
-  // ===== OFFICIAL STAMP AREA =====
+  // ===== OFFICIAL STAMP AREA (Square dimension) =====
+  const stampSize = 50; // Square dimensions
   doc.setDrawColor(41, 128, 185);
   doc.setLineWidth(1);
-  doc.rect(pageWidth - 65, currentY - 10, 50, 35);
+  doc.rect(pageWidth - 15 - stampSize, currentY - 15, stampSize, stampSize);
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text('Official Stamp', pageWidth - 40, currentY + 10, { align: 'center' });
+  doc.text('Official Stamp', pageWidth - 15 - stampSize / 2, currentY + 10, { align: 'center' });
 
   // Add footer to all pages with proper page numbering
   const totalPages = doc.getNumberOfPages();
@@ -490,15 +499,15 @@ export function generateAuditReportPDF(data: AuditReportData): jsPDF {
     const footerY = pageHeight - 10;
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
-    doc.text('©2026 Blaqlogic Digitals. All rights reserved.', pageWidth / 2, footerY, { align: 'center' });
+    doc.text('\u00A92026 Blaqlogic Digitals. All rights reserved.', pageWidth / 2, footerY, { align: 'center' });
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - 15, footerY, { align: 'right' });
   }
 
   return doc;
 }
 
-export function downloadAuditReport(data: AuditReportData): void {
-  const doc = generateAuditReportPDF(data);
+export async function downloadAuditReport(data: AuditReportData): Promise<void> {
+  const doc = await generateAuditReportPDF(data);
   const schoolName = data.orderData.school_name?.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').toUpperCase() || 'SCHOOL';
   const fileName = `${schoolName}_Audit_Report.pdf`;
   doc.save(fileName);

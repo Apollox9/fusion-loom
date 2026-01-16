@@ -150,16 +150,25 @@ export default function SchoolDashboard() {
         // Calculate profit based on tier percentage
         const profit = calculateProfitByTier(sessionStudents, sessionAmount);
         
-        // Count active orders
-        const activeCount = ordersData?.filter((o: any) => 
-          ['QUEUED', 'PICKUP', 'ONGOING', 'PACKAGING', 'DELIVERY'].includes(o.status)
-        ).length || 0;
+        // Calculate printed garments from all students in the latest order
+        let printedGarments = 0;
+        if (ordersData && ordersData.length > 0) {
+          const latestOrder = ordersData[0];
+          const { data: studentsData } = await supabase
+            .from('students')
+            .select('printed_light_garment_count, printed_dark_garment_count')
+            .eq('session_id', latestOrder.id);
+          
+          printedGarments = (studentsData || []).reduce((sum, s) => 
+            sum + (s.printed_light_garment_count || 0) + (s.printed_dark_garment_count || 0), 0
+          );
+        }
 
         setStats({
           submittedStudents: sessionStudents,
           totalStudents: sessionStudents,
           verifiedGarments: sessionGarments,
-          inPrinting: activeCount,
+          inPrinting: printedGarments,
           completed: 0,
           projectedProfit: profit
         });
@@ -314,12 +323,12 @@ export default function SchoolDashboard() {
 
           <Card className="hover:shadow-lg transition-all">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+              <CardTitle className="text-sm font-medium">Printed Garments</CardTitle>
               <Printer className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
               <AnimatedCounter end={stats.inPrinting} />
-              <p className="text-xs text-muted-foreground mt-1">Currently printing</p>
+              <p className="text-xs text-muted-foreground mt-1">Already printed</p>
             </CardContent>
           </Card>
 
@@ -382,9 +391,9 @@ export default function SchoolDashboard() {
                   <div className="space-y-4">
                     {[
                       { statuses: ['PENDING'], label: 'Pending', color: 'bg-yellow-500' },
-                      { statuses: ['SUBMITTED', 'CONFIRMED', 'AUTO_CONFIRMED', 'QUEUED'], label: 'Queued', color: 'bg-blue-500' },
-                      { statuses: ['PICKUP', 'ONGOING'], label: 'In Progress', color: 'bg-purple-500' },
-                      { statuses: ['DONE', 'PACKAGING', 'DELIVERY'], label: 'Processing', color: 'bg-teal-500' },
+                      { statuses: ['SUBMITTED', 'CONFIRMED', 'AUTO_CONFIRMED'], label: 'Submitted', color: 'bg-blue-500' },
+                      { statuses: ['QUEUED'], label: 'Queued', color: 'bg-indigo-500' },
+                      { statuses: ['PICKUP', 'ONGOING', 'DONE', 'PACKAGING', 'DELIVERY'], label: 'In Progress', color: 'bg-purple-500' },
                       { statuses: ['COMPLETED'], label: 'Completed', color: 'bg-green-500' }
                     ].map((group) => {
                       const count = sessions.filter(s => group.statuses.includes(s.status)).length;

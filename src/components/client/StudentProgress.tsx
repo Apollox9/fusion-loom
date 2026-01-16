@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle, Clock, Loader } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { ArrowLeft, CheckCircle, Clock, Loader, Package } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface StudentProgressProps {
   student: any;
   className: string;
   onBack: () => void;
+  sessionId?: string;
 }
 
 interface Phase {
@@ -18,11 +20,91 @@ interface Phase {
   timestamp?: Date;
 }
 
-export const StudentProgress: React.FC<StudentProgressProps> = ({ student, className, onBack }) => {
+export const StudentProgress: React.FC<StudentProgressProps> = ({ student, className, onBack, sessionId }) => {
+  const [auditSessionActive, setAuditSessionActive] = useState(false);
+  const [packagedTime, setPackagedTime] = useState<Date | null>(null);
+  
   const totalGarments = (student.total_light_garment_count || 0) + (student.total_dark_garment_count || 0);
   const printedGarments = (student.printed_light_garment_count || 0) + (student.printed_dark_garment_count || 0);
   
-  // Determine phases based on student data
+  // Check if an audit session is active for this order
+  useEffect(() => {
+    const checkAuditSession = async () => {
+      if (!sessionId) return;
+      
+      const { data } = await supabase
+        .from('audit_reports')
+        .select('status')
+        .eq('session_id', sessionId)
+        .maybeSingle();
+      
+      if (data && data.status === 'IN_PROGRESS') {
+        setAuditSessionActive(true);
+      }
+    };
+    
+    checkAuditSession();
+    
+    // Set up real-time subscription for audit reports
+    const channel = supabase
+      .channel('student-audit-status')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'audit_reports',
+        filter: `session_id=eq.${sessionId}`
+      }, (payload: any) => {
+        if (payload.new?.status === 'IN_PROGRESS') {
+          setAuditSessionActive(true);
+        } else {
+          setAuditSessionActive(false);
+        }
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId]);
+
+  // Track packaged time (5 mins after printing done)
+  useEffect(() => {
+    if (student.is_served && student.printing_done_at) {
+      const printingDoneDate = new Date(student.printing_done_at);
+      const packagedDate = new Date(printingDoneDate.getTime() + 5 * 60 * 1000);
+      setPackagedTime(packagedDate);
+    }
+  }, [student.is_served, student.printing_done_at]);
+
+  // Determine phases based on student data with is_audited tracking
+  const getPhaseStatus = (phaseName: string): 'completed' | 'in-progress' | 'pending' => {
+    const isAudited = student.is_audited === true;
+    const hasPrintedGarments = printedGarments > 0;
+    const isPrintingDone = student.is_served === true;
+    
+    switch (phaseName) {
+      case 'Waiting Auditing':
+        return 'completed'; // Always completed as starting point
+      case 'Auditing':
+        if (isAudited) return 'completed';
+        if (auditSessionActive && !isAudited) return 'in-progress';
+        return 'pending';
+      case 'Audited':
+        return isAudited ? 'completed' : 'pending';
+      case 'Printing':
+        if (isPrintingDone) return 'completed';
+        if (hasPrintedGarments && !isPrintingDone) return 'in-progress';
+        return 'pending';
+      case 'Printing Done / Waiting Packaging':
+        return isPrintingDone ? 'completed' : 'pending';
+      case 'Packaged':
+        if (isPrintingDone && packagedTime && new Date() >= packagedTime) return 'completed';
+        return 'pending';
+      default:
+        return 'pending';
+    }
+  };
+
   const phases: Phase[] = [
     {
       name: 'Waiting Auditing',
@@ -32,28 +114,29 @@ export const StudentProgress: React.FC<StudentProgressProps> = ({ student, class
     },
     {
       name: 'Auditing',
-      status: 'completed',
-      duration: '3 mins'
+      status: getPhaseStatus('Auditing'),
+      duration: student.is_audited ? '3 mins' : undefined,
+      timestamp: student.is_audited && student.updated_at ? new Date(student.updated_at) : undefined
     },
     {
-      name: 'Audited / Waiting Printing',
-      status: 'completed',
-      duration: '1 min'
+      name: 'Audited',
+      status: getPhaseStatus('Audited'),
+      timestamp: student.is_audited && student.updated_at ? new Date(student.updated_at) : undefined
     },
     {
       name: 'Printing',
-      status: printedGarments === totalGarments ? 'completed' : printedGarments > 0 ? 'in-progress' : 'pending',
-      duration: printedGarments === totalGarments ? '7 mins' : undefined
+      status: getPhaseStatus('Printing'),
+      duration: student.is_served ? '7 mins' : undefined
     },
     {
       name: 'Printing Done / Waiting Packaging',
-      status: student.light_garments_printed && student.dark_garments_printed ? 'completed' : 'pending',
-      duration: student.light_garments_printed && student.dark_garments_printed ? '2 mins' : undefined
+      status: getPhaseStatus('Printing Done / Waiting Packaging'),
+      timestamp: student.printing_done_at ? new Date(student.printing_done_at) : undefined
     },
     {
       name: 'Packaged',
-      status: student.is_served ? 'completed' : 'pending',
-      timestamp: student.updated_at && student.is_served ? new Date(student.updated_at) : undefined
+      status: getPhaseStatus('Packaged'),
+      timestamp: packagedTime || undefined
     }
   ];
   
@@ -158,9 +241,9 @@ export const StudentProgress: React.FC<StudentProgressProps> = ({ student, class
                           Duration: {phase.duration}
                         </p>
                       )}
-                      {phase.timestamp && (
+                      {phase.timestamp && phase.status === 'completed' && (
                         <p className="text-sm text-muted-foreground mt-1">
-                          {formatDistanceToNow(phase.timestamp, { addSuffix: true })}
+                          {format(phase.timestamp, 'MMM d, yyyy h:mm a')} ({formatDistanceToNow(phase.timestamp, { addSuffix: true })})
                         </p>
                       )}
                     </div>
@@ -179,12 +262,25 @@ export const StudentProgress: React.FC<StudentProgressProps> = ({ student, class
       <Card className="bg-gradient-to-r from-primary/5 to-blue-500/5">
         <CardContent className="pt-6">
           <div className="text-center">
-            {student.is_served ? (
+            {phases.every(p => p.status === 'completed') ? (
+              <>
+                <Package className="w-12 h-12 text-green-600 mx-auto mb-2" />
+                <p className="font-semibold text-lg">All Done & Packaged!</p>
+                {packagedTime && (
+                  <p className="text-sm text-muted-foreground">
+                    Packaged {formatDistanceToNow(packagedTime, { addSuffix: true })}
+                  </p>
+                )}
+              </>
+            ) : student.is_served ? (
               <>
                 <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-2" />
-                <p className="font-semibold text-lg">All Done!</p>
+                <p className="font-semibold text-lg">Printing Complete!</p>
                 <p className="text-sm text-muted-foreground">
-                  Completed {formatDistanceToNow(new Date(student.updated_at), { addSuffix: true })}
+                  {student.printing_done_at 
+                    ? `Completed ${formatDistanceToNow(new Date(student.printing_done_at), { addSuffix: true })}`
+                    : 'Awaiting packaging'
+                  }
                 </p>
               </>
             ) : currentPhase?.status === 'in-progress' ? (
