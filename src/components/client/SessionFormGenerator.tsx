@@ -138,7 +138,7 @@ export function SessionFormGenerator({ schoolName }: SessionFormGeneratorProps) 
       const zip = new JSZip();
 
       for (const classData of generatedClasses) {
-        const pdf = generateClassFormPDF(classData, schoolName);
+        const pdf = await generateClassFormPDF(classData, schoolName);
         const pdfBlob = pdf.output('blob');
         zip.file(`${classData.className}.pdf`, pdfBlob);
       }

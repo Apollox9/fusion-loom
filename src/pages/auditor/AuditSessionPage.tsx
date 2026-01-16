@@ -508,22 +508,22 @@ export default function AuditSessionPage() {
     return { totalStudents, totalLightGarments, totalDarkGarments, totalGarments };
   }, [students]);
 
-  // Audited counts
+  // Audited counts - using is_audited column
   const auditedClassesCount = useMemo(() => {
-    return classes.filter(cls => cls.is_attended).length;
+    return classes.filter(cls => cls.is_audited).length;
   }, [classes]);
 
   const auditedStudentsCount = useMemo(() => {
-    return students.filter(s => s.is_served).length;
+    return students.filter(s => s.is_audited).length;
   }, [students]);
 
   // Toggle class audited status
   const handleToggleClassAudited = async (cls: any) => {
     try {
-      const newStatus = !cls.is_attended;
+      const newStatus = !cls.is_audited;
       const { error } = await supabase
         .from('classes')
-        .update({ is_attended: newStatus, updated_at: new Date().toISOString() })
+        .update({ is_audited: newStatus, updated_at: new Date().toISOString() })
         .eq('id', cls.id);
 
       if (error) throw error;
@@ -531,8 +531,8 @@ export default function AuditSessionPage() {
       // Add audit trail entry
       const entry = addAuditTrailEntry(
         'UPDATE',
-        'is_attended',
-        cls.is_attended ? 'true' : 'false',
+        'is_audited',
+        cls.is_audited ? 'true' : 'false',
         newStatus ? 'true' : 'false',
         'class',
         cls.id,
@@ -556,10 +556,10 @@ export default function AuditSessionPage() {
   // Toggle student audited status  
   const handleToggleStudentAudited = async (student: any) => {
     try {
-      const newStatus = !student.is_served;
+      const newStatus = !student.is_audited;
       const { error } = await supabase
         .from('students')
-        .update({ is_served: newStatus, updated_at: new Date().toISOString() })
+        .update({ is_audited: newStatus, updated_at: new Date().toISOString() })
         .eq('id', student.id);
 
       if (error) throw error;
@@ -567,8 +567,8 @@ export default function AuditSessionPage() {
       // Add audit trail entry
       const entry = addAuditTrailEntry(
         'UPDATE',
-        'is_served',
-        student.is_served ? 'true' : 'false',
+        'is_audited',
+        student.is_audited ? 'true' : 'false',
         newStatus ? 'true' : 'false',
         'student',
         student.id,
@@ -624,9 +624,9 @@ export default function AuditSessionPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <Button 
                 variant="outline" 
-                onClick={() => {
+                onClick={async () => {
                   if (auditReport && orderData) {
-                    downloadAuditReport({
+                    await downloadAuditReport({
                       auditReport,
                       orderData,
                       auditorName: profile?.full_name || 'Unknown',
@@ -847,10 +847,10 @@ export default function AuditSessionPage() {
                         const hasDiscrepancy = submittedCount !== collectedCount;
                         
                         return (
-                          <TableRow key={cls.id} className={cls.is_attended ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''}>
+                          <TableRow key={cls.id} className={cls.is_audited ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''}>
                             <TableCell>
                               <Checkbox
-                                checked={cls.is_attended}
+                                checked={cls.is_audited}
                                 onCheckedChange={() => handleToggleClassAudited(cls)}
                                 className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
                               />
@@ -961,10 +961,10 @@ export default function AuditSessionPage() {
                         const hasDiscrepancy = (student.total_light_garment_count !== submittedLight) || (student.total_dark_garment_count !== submittedDark);
                         
                         return (
-                          <TableRow key={student.id} className={student.is_served ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : hasDiscrepancy ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
+                          <TableRow key={student.id} className={student.is_audited ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : hasDiscrepancy ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
                             <TableCell>
                               <Checkbox
-                                checked={student.is_served}
+                                checked={student.is_audited}
                                 onCheckedChange={() => handleToggleStudentAudited(student)}
                                 className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
                               />

@@ -143,6 +143,7 @@ export type Database = {
           created_at: string
           id: string
           is_attended: boolean
+          is_audited: boolean
           name: string
           order_id: string | null
           school_id: string
@@ -157,6 +158,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_attended?: boolean
+          is_audited?: boolean
           name: string
           order_id?: string | null
           school_id: string
@@ -171,6 +173,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_attended?: boolean
+          is_audited?: boolean
           name?: string
           order_id?: string | null
           school_id?: string
@@ -1161,6 +1164,7 @@ export type Database = {
           dark_garments_printed: boolean
           full_name: string
           id: string
+          is_audited: boolean
           is_served: boolean
           light_garments_printed: boolean
           printed_dark_garment_count: number
@@ -1181,6 +1185,7 @@ export type Database = {
           dark_garments_printed?: boolean
           full_name: string
           id?: string
+          is_audited?: boolean
           is_served?: boolean
           light_garments_printed?: boolean
           printed_dark_garment_count?: number
@@ -1201,6 +1206,7 @@ export type Database = {
           dark_garments_printed?: boolean
           full_name?: string
           id?: string
+          is_audited?: boolean
           is_served?: boolean
           light_garments_printed?: boolean
           printed_dark_garment_count?: number
