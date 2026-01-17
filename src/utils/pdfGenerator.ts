@@ -96,8 +96,8 @@ export async function generateClassFormPDF(classData: ClassData, schoolName: str
   if (logoBase64) {
     try {
       // Use fixed height and auto width to maintain aspect ratio
-      const logoHeight = 12;
-      const logoWidth = 45; // Approximate aspect ratio
+      const logoHeight = 7;
+      const logoWidth = 49; // Approximate aspect ratio
       doc.addImage(logoBase64, 'PNG', pageWidth / 2 - logoWidth / 2, currentY - 3, logoWidth, logoHeight);
       currentY += logoHeight + 3;
     } catch {

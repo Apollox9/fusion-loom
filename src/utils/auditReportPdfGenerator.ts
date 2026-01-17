@@ -118,8 +118,8 @@ export async function generateAuditReportPDF(data: AuditReportData): Promise<jsP
   if (logoBase64) {
     try {
       // Use fixed height and auto width to maintain aspect ratio
-      const logoHeight = 12;
-      const logoWidth = 45; // Approximate aspect ratio
+      const logoHeight = 7;
+      const logoWidth = 49; // Approximate aspect ratio
       doc.addImage(logoBase64, 'PNG', pageWidth / 2 - logoWidth / 2, currentY - 3, logoWidth, logoHeight);
       currentY += logoHeight + 3;
     } catch {
@@ -137,7 +137,7 @@ export async function generateAuditReportPDF(data: AuditReportData): Promise<jsP
     currentY += 8;
   }
   
-  currentY += 3;
+  currentY += 1;
   doc.setDrawColor(41, 128, 185);
   doc.setLineWidth(0.5);
   doc.line(15, currentY, pageWidth - 15, currentY);
@@ -409,9 +409,9 @@ export async function generateAuditReportPDF(data: AuditReportData): Promise<jsP
       columnStyles: {
         0: { halign: 'center', cellWidth: 8 },
         1: { halign: 'center', cellWidth: 18 },
-        2: { halign: 'left', cellWidth: 35 },
+        2: { halign: 'left', cellWidth: 40 },
         3: { halign: 'left', cellWidth: 30 },
-        4: { halign: 'center', cellWidth: 15 },
+        4: { halign: 'center', cellWidth: 20 },
         5: { halign: 'center', cellWidth: 15 },
         6: { halign: 'center', cellWidth: 30 }
       },
