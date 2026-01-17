@@ -332,7 +332,7 @@ export const generateFinancialReportPdf = async (
     },
     columnStyles: {
       0: { halign: 'left', cellWidth: 50 },
-      1: { halign: 'right', cellWidth: 50 },
+      1: { halign: 'left', cellWidth: 50 },
       2: { halign: 'left', cellWidth: 60 }
     },
     margin: { left: margin, right: margin }
@@ -382,7 +382,7 @@ export const generateFinancialReportPdf = async (
     columnStyles: {
       0: { halign: 'center', cellWidth: 40 },
       1: { halign: 'center', cellWidth: 30 },
-      2: { halign: 'right', cellWidth: 50 },
+      2: { halign: 'left', cellWidth: 50 },
       3: { halign: 'center', cellWidth: 30 }
     },
     margin: { left: margin, right: margin }
@@ -433,7 +433,7 @@ export const generateFinancialReportPdf = async (
     columnStyles: {
       0: { halign: 'left', cellWidth: 45 },
       1: { halign: 'center', cellWidth: 35 },
-      2: { halign: 'right', cellWidth: 45 },
+      2: { halign: 'left', cellWidth: 45 },
       3: { halign: 'center', cellWidth: 30 }
     },
     margin: { left: margin, right: margin }
@@ -488,7 +488,7 @@ export const generateFinancialReportPdf = async (
       0: { halign: 'center', cellWidth: 15 },
       1: { halign: 'left', cellWidth: 80 },
       2: { halign: 'center', cellWidth: 25 },
-      3: { halign: 'right', cellWidth: 40 }
+      3: { halign: 'left', cellWidth: 40 }
     },
     margin: { left: margin, right: margin }
   });
