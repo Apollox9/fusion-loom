@@ -92,11 +92,14 @@ export async function generateClassFormPDF(classData: ClassData, schoolName: str
   // Reset text color
   doc.setTextColor(0, 0, 0);
 
-  // Header Section with PROJECT FUSION logo
+  // Header Section with PROJECT FUSION logo - maintain aspect ratio
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 30, currentY - 5, 60, 15);
-      currentY += 15;
+      // Use fixed height and auto width to maintain aspect ratio
+      const logoHeight = 12;
+      const logoWidth = 45; // Approximate aspect ratio
+      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - logoWidth / 2, currentY - 3, logoWidth, logoHeight);
+      currentY += logoHeight + 3;
     } catch {
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
@@ -199,11 +202,13 @@ export async function generateClassFormPDF(classData: ClassData, schoolName: str
   doc.addPage();
   currentY = 15;
 
-  // Add logo on page 2 as well
+  // Add logo on page 2 as well - maintain aspect ratio
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 30, currentY - 5, 60, 15);
-      currentY += 18;
+      const logoHeight = 12;
+      const logoWidth = 45;
+      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - logoWidth / 2, currentY - 3, logoWidth, logoHeight);
+      currentY += logoHeight + 5;
     } catch {
       currentY += 5;
     }

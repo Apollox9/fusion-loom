@@ -312,8 +312,12 @@ export function SubmissionsTracking() {
   };
 
   const pendingSubmissions = submissions.filter(s => s.status === 'PENDING');
-  const activeSubmissions = submissions.filter(s => 
-    ['SUBMITTED', 'CONFIRMED', 'AUTO_CONFIRMED', 'QUEUED', 'PICKUP', 'ONGOING', 'DONE', 'PACKAGING', 'DELIVERY'].includes(s.status)
+  const submittedSubmissions = submissions.filter(s => 
+    ['SUBMITTED', 'CONFIRMED', 'AUTO_CONFIRMED'].includes(s.status)
+  );
+  const queuedSubmissions = submissions.filter(s => s.status === 'QUEUED');
+  const inProgressSubmissions = submissions.filter(s => 
+    ['QUEUED', 'PICKUP', 'ONGOING', 'DONE', 'PACKAGING', 'DELIVERY'].includes(s.status)
   );
   const completedSubmissions = submissions.filter(s => 
     ['COMPLETED', 'ABORTED'].includes(s.status)
@@ -330,10 +334,11 @@ export function SubmissionsTracking() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="all">All ({submissions.length})</TabsTrigger>
           <TabsTrigger value="pending">Pending ({pendingSubmissions.length})</TabsTrigger>
-          <TabsTrigger value="active">Active ({activeSubmissions.length})</TabsTrigger>
+          <TabsTrigger value="submitted">Submitted ({submittedSubmissions.length})</TabsTrigger>
+          <TabsTrigger value="inprogress">In Progress ({inProgressSubmissions.length})</TabsTrigger>
           <TabsTrigger value="completed">Completed ({completedSubmissions.length})</TabsTrigger>
         </TabsList>
 
@@ -385,16 +390,40 @@ export function SubmissionsTracking() {
           )}
         </TabsContent>
 
-        <TabsContent value="active" className="space-y-4 mt-6">
-          {activeSubmissions.length === 0 ? (
+        <TabsContent value="submitted" className="space-y-4 mt-6">
+          {submittedSubmissions.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <Package className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground">No active orders</p>
+                <FileText className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">No submitted orders</p>
               </CardContent>
             </Card>
           ) : (
-            activeSubmissions.map(submission => (
+            submittedSubmissions.map(submission => (
+              <SubmissionCard
+                key={submission.id}
+                submission={submission}
+                onViewDetails={() => {
+                  setSelectedSubmission(submission);
+                  setShowDetails(true);
+                }}
+                progress={calculateProgress(submission)}
+                statusConfig={getStatusConfig(submission.status)}
+              />
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="inprogress" className="space-y-4 mt-6">
+          {inProgressSubmissions.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Package className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">No orders in progress</p>
+              </CardContent>
+            </Card>
+          ) : (
+            inProgressSubmissions.map(submission => (
               <SubmissionCard
                 key={submission.id}
                 submission={submission}
