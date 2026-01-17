@@ -151,7 +151,7 @@ export const generateTransactionsExportPdf = async (
   
   autoTable(doc, {
     startY: currentY,
-    head: [['#', 'Date', 'Order ID', 'School', 'Amount', 'Status', 'Payment']],
+    head: [['#', 'Date', 'Order ID', 'School', 'Amount', 'Status', 'Payment Method']],
     body: transactionData,
     theme: 'grid',
     headStyles: {
@@ -170,9 +170,9 @@ export const generateTransactionsExportPdf = async (
       1: { halign: 'center', cellWidth: 22 },
       2: { halign: 'center', cellWidth: 22 },
       3: { halign: 'left', cellWidth: 40 },
-      4: { halign: 'right', cellWidth: 30 },
+      4: { halign: 'left', cellWidth: 30 },
       5: { halign: 'center', cellWidth: 25 },
-      6: { halign: 'center', cellWidth: 25 }
+      6: { halign: 'center', cellWidth: 35 }
     },
     margin: { left: margin, right: margin },
     didDrawPage: (data) => {
