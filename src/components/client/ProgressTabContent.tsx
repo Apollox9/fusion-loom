@@ -296,6 +296,7 @@ export const ProgressTabContent: React.FC<ProgressTabContentProps> = ({ sessions
           student={selectedStudent}
           className={selectedClass.name}
           onBack={handleBackToClass}
+          sessionId={activeSession?.id}
         />
       )}
     </div>

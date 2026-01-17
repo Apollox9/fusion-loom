@@ -114,11 +114,14 @@ export async function generateAuditReportPDF(data: AuditReportData): Promise<jsP
     }
   };
 
-  // ===== HEADER WITH LOGO =====
+  // ===== HEADER WITH LOGO - Maintain aspect ratio =====
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 30, currentY - 5, 60, 15);
-      currentY += 15;
+      // Use fixed height and auto width to maintain aspect ratio
+      const logoHeight = 12;
+      const logoWidth = 45; // Approximate aspect ratio
+      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - logoWidth / 2, currentY - 3, logoWidth, logoHeight);
+      currentY += logoHeight + 3;
     } catch {
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
@@ -283,12 +286,22 @@ export async function generateAuditReportPDF(data: AuditReportData): Promise<jsP
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
   
+  // Calculate audited students count from is_audited column
+  const totalStudentsAudited = students.filter(s => s.is_audited === true).length;
+  
+  // Calculate students with discrepancies (those whose garment counts were changed)
+  const studentsWithDiscrepancies = auditTrail.filter(entry => 
+    entry.entity_type === 'student' && 
+    entry.action === 'UPDATE' &&
+    (entry.field === 'total_light_garment_count' || entry.field === 'total_dark_garment_count')
+  ).map(entry => entry.entity_id);
+  const uniqueStudentsWithDiscrepancies = [...new Set(studentsWithDiscrepancies)].length;
+  
   const summaryData = [
-    ['Total Students Audited:', String(auditReport.total_students_audited || 0)],
-    ['Students with Discrepancies:', String(auditReport.students_with_discrepancies || 0)],
-    ['Discrepancies Found:', auditReport.discrepancies_found ? 'Yes' : 'No'],
-    ['Total Classes:', String(classes.length)],
-    ['Total Audit Trail Entries:', String(auditTrail.length)]
+    ['Total Students Audited:', String(totalStudentsAudited)],
+    ['Students with Discrepancies:', String(uniqueStudentsWithDiscrepancies)],
+    ['Discrepancies Found:', uniqueStudentsWithDiscrepancies > 0 ? 'Yes' : 'No'],
+    ['Total Classes:', String(classes.length)]
   ];
   
   summaryData.forEach(([label, value]) => {
@@ -352,7 +365,12 @@ export async function generateAuditReportPDF(data: AuditReportData): Promise<jsP
   }
 
   // ===== DISCREPANCIES LIST =====
-  const discrepancies = auditTrail.filter(entry => entry.action === 'UPDATE');
+  // Filter out is_audited entries and only show garment count changes
+  const discrepancies = auditTrail.filter(entry => 
+    entry.action === 'UPDATE' && 
+    entry.field !== 'is_audited' &&
+    (entry.field.includes('garment') || entry.field.includes('student'))
+  );
   
   if (discrepancies.length > 0) {
     addPageIfNeeded(40);
@@ -375,7 +393,7 @@ export async function generateAuditReportPDF(data: AuditReportData): Promise<jsP
 
     autoTable(doc, {
       startY: currentY,
-      head: [['#', 'Type', 'Name', 'Field', 'Old', 'New', 'Time']],
+      head: [['#', 'Type', 'Name', 'Field', 'Submitted', 'Collected', 'Time']],
       body: discrepancyData,
       theme: 'striped',
       headStyles: {
@@ -403,55 +421,7 @@ export async function generateAuditReportPDF(data: AuditReportData): Promise<jsP
     currentY = (doc as any).lastAutoTable.finalY + 6;
   }
 
-  // ===== AUDIT TRAIL =====
-  if (auditTrail.length > 0) {
-    addPageIfNeeded(40);
-    
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(41, 128, 185);
-    doc.text('Complete Audit Trail', 15, currentY);
-    currentY += 5;
-
-    const trailData = auditTrail.map((entry, index) => [
-      String(index + 1),
-      format(new Date(entry.timestamp), 'MMM d, h:mm:ss a'),
-      entry.auditor_name || 'Unknown',
-      `${entry.action} ${entry.entity_type}`,
-      entry.entity_name || 'N/A',
-      `${formatFieldName(entry.field)}: ${entry.old_value} \u2192 ${entry.new_value}`
-    ]);
-
-    autoTable(doc, {
-      startY: currentY,
-      head: [['#', 'Timestamp', 'Auditor', 'Action', 'Entity', 'Change']],
-      body: trailData,
-      theme: 'striped',
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      styles: {
-        fontSize: 7,
-        cellPadding: 3,
-        overflow: 'linebreak',
-        minCellHeight: 8
-      },
-      columnStyles: {
-        0: { halign: 'center', cellWidth: 8 },
-        1: { halign: 'center', cellWidth: 30 },
-        2: { halign: 'left', cellWidth: 22 },
-        3: { halign: 'center', cellWidth: 22 },
-        4: { halign: 'left', cellWidth: 28 },
-        5: { halign: 'left', cellWidth: 'auto', overflow: 'linebreak' }
-      },
-      margin: { bottom: 25 }
-    });
-
-    currentY = (doc as any).lastAutoTable.finalY + 6;
-  }
+  // NOTE: Complete Audit Trail section removed as the discrepancies are already shown above
 
   // ===== SIGNATURE SECTION =====
   addPageIfNeeded(80);
