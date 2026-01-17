@@ -10,12 +10,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowUpRight, Eye, FileDown, BarChart3 } from 'lucide-react';
+import { ArrowUpRight, Eye, FileDown, BarChart3, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatTZS } from '@/utils/pricing';
 import { toast } from 'sonner';
+import { generateTransactionsExportPdf, generateFinancialReportPdf } from '@/utils/financialReportPdfGenerator';
 
-interface Order {
+export interface Order {
   id: string;
   external_ref: string | null;
   school_name: string | null;
@@ -29,9 +30,19 @@ export function TransactionsList() {
   const [transactions, setTransactions] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalIncome, setTotalIncome] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    monthlyRevenue: 0,
+    pendingTransactions: 0,
+    confirmedOrders: 0,
+    totalTransactions: 0
+  });
 
   useEffect(() => {
     fetchTransactions();
+    fetchStats();
   }, []);
 
   const fetchTransactions = async () => {
@@ -40,8 +51,7 @@ export function TransactionsList() {
       const { data, error } = await supabase
         .from('orders')
         .select('id, external_ref, school_name, total_amount, status, created_at, payment_method')
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -55,6 +65,44 @@ export function TransactionsList() {
       toast.error('Failed to load transactions');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      // Fetch all orders for stats
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('total_amount, created_at, status');
+      
+      const totalRevenue = (orders || []).reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+      
+      // Calculate this month's revenue
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthlyOrders = (orders || []).filter(o => new Date(o.created_at) >= startOfMonth);
+      const monthlyRevenue = monthlyOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+      
+      // Confirmed orders this month
+      const confirmedOrders = monthlyOrders.filter(o => 
+        ['CONFIRMED', 'AUTO_CONFIRMED', 'COMPLETED', 'DONE'].includes(o.status)
+      ).length;
+      
+      // Fetch pending orders count
+      const { count: pendingCount } = await supabase
+        .from('pending_orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('payment_verified', false);
+
+      setStats({
+        totalRevenue,
+        monthlyRevenue,
+        pendingTransactions: pendingCount || 0,
+        confirmedOrders,
+        totalTransactions: (orders || []).length
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -79,33 +127,40 @@ export function TransactionsList() {
     }
   };
 
-  const handleExportTransactions = () => {
+  const handleExportTransactions = async () => {
     if (transactions.length === 0) {
       toast.error('No transactions to export');
       return;
     }
 
-    const csvContent = [
-      ['Date', 'Order ID', 'School', 'Amount (TZS)', 'Status', 'Payment Method'].join(','),
-      ...transactions.map(t => [
-        new Date(t.created_at).toLocaleDateString(),
-        t.external_ref || t.id.slice(0, 8),
-        `"${t.school_name || 'N/A'}"`,
-        t.total_amount || 0,
-        t.status,
-        t.payment_method || 'N/A'
-      ].join(','))
-    ].join('\n');
+    try {
+      setIsExporting(true);
+      await generateTransactionsExportPdf(transactions, stats);
+      toast.success('Transactions exported successfully as PDF');
+    } catch (error) {
+      console.error('Error exporting transactions:', error);
+      toast.error('Failed to export transactions');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    toast.success('Transactions exported successfully');
+  const handleGenerateReport = async () => {
+    if (transactions.length === 0) {
+      toast.error('No data available for report');
+      return;
+    }
+
+    try {
+      setIsGeneratingReport(true);
+      await generateFinancialReportPdf(transactions, stats);
+      toast.success('Financial report generated successfully');
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast.error('Failed to generate report');
+    } finally {
+      setIsGeneratingReport(false);
+    }
   };
 
   if (isLoading) {
@@ -215,17 +270,27 @@ export function TransactionsList() {
             <Button 
               className="w-full bg-gradient-hero text-white shadow-primary hover:shadow-electric transition-all duration-300"
               onClick={handleExportTransactions}
+              disabled={isExporting || transactions.length === 0}
             >
-              <FileDown className="h-4 w-4 mr-2" />
-              Export Transactions
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-2" />
+              )}
+              {isExporting ? 'Exporting...' : 'Export Transactions'}
             </Button>
             <Button 
               variant="outline" 
               className="w-full border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
-              onClick={() => toast.info('Report generation coming soon')}
+              onClick={handleGenerateReport}
+              disabled={isGeneratingReport || transactions.length === 0}
             >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Generate Report
+              {isGeneratingReport ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <BarChart3 className="h-4 w-4 mr-2" />
+              )}
+              {isGeneratingReport ? 'Generating...' : 'Generate Report'}
             </Button>
           </CardContent>
         </Card>
