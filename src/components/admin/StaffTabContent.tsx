@@ -22,9 +22,12 @@ import {
   Edit,
   Trash2,
   Search,
-  Key
+  Key,
+  ChevronRight,
+  ClipboardList
 } from 'lucide-react';
 import { generateStaffId } from '@/utils/staffIdGenerator';
+import { StaffDetailSheet } from './StaffDetailSheet';
 
 interface StaffTabContentProps {
   onRefresh?: () => void;
@@ -39,6 +42,8 @@ export function StaffTabContent({ onRefresh }: StaffTabContentProps) {
   const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [isCreatingStaff, setIsCreatingStaff] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDetailSheet, setShowDetailSheet] = useState(false);
+  const [detailStaff, setDetailStaff] = useState<any>(null);
   
   // Search and filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -473,7 +478,14 @@ export function StaffTabContent({ onRefresh }: StaffTabContentProps) {
               </TableHeader>
               <TableBody>
                 {filteredStaff.map((member, index) => (
-                  <TableRow key={member.id}>
+                  <TableRow 
+                    key={member.id} 
+                    className="cursor-pointer hover:bg-muted/70 transition-colors"
+                    onClick={() => {
+                      setDetailStaff(member);
+                      setShowDetailSheet(true);
+                    }}
+                  >
                     <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="font-mono text-sm">{member.staff_id}</TableCell>
                     <TableCell className="font-medium">{member.full_name}</TableCell>
@@ -489,31 +501,60 @@ export function StaffTabContent({ onRefresh }: StaffTabContentProps) {
                     <TableCell>{member.sessions_hosted || 0}</TableCell>
                     <TableCell>{new Date(member.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditClick(member)}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditClick(member)}>
-                            <Key className="w-4 h-4 mr-2" />
-                            Change Password
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteClick(member)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Staff
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDetailStaff(member);
+                            setShowDetailSheet(true);
+                          }}
+                        >
+                          <ClipboardList className="w-4 h-4 mr-1" />
+                          Tasks
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClick(member);
+                            }}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClick(member);
+                            }}>
+                              <Key className="w-4 h-4 mr-2" />
+                              Change Password
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(member);
+                              }}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Staff
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -606,6 +647,14 @@ export function StaffTabContent({ onRefresh }: StaffTabContentProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Staff Detail Sheet */}
+      <StaffDetailSheet
+        staff={detailStaff}
+        open={showDetailSheet}
+        onOpenChange={setShowDetailSheet}
+        onRefresh={fetchStaff}
+      />
     </div>
   );
 }
