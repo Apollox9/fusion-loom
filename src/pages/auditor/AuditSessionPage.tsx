@@ -477,6 +477,15 @@ export default function AuditSessionPage() {
 
   const handleCompleteAudit = async () => {
     try {
+      // Check if all classes and students are audited
+      const allClassesAudited = classes.every(cls => cls.is_audited);
+      const allStudentsAudited = students.every(s => s.is_audited);
+      
+      if (!allClassesAudited || !allStudentsAudited) {
+        toast.error('Please mark all classes and students as audited before completing the audit');
+        return;
+      }
+      
       const { error } = await supabase
         .from('audit_reports')
         .update({
@@ -487,7 +496,24 @@ export default function AuditSessionPage() {
 
       if (error) throw error;
       
-      toast.success('Audit completed successfully');
+      // Increment sessions_hosted for the auditor
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select('id, sessions_hosted')
+        .eq('user_id', profile?.id)
+        .single();
+      
+      if (staffData) {
+        await supabase
+          .from('staff')
+          .update({ 
+            sessions_hosted: (staffData.sessions_hosted || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', staffData.id);
+      }
+      
+      toast.success('Audit completed successfully! Session count incremented.');
       navigate('/auditor');
     } catch (error: any) {
       console.error('Error completing audit:', error);

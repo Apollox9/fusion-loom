@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Eye, EyeOff, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -44,6 +45,7 @@ export function AuthPage() {
     country: '',
     region: '',
     district: '',
+    promoCode: '', // Agent ID or Invitational Code (optional)
     
     // Step 3: Account Security
     password: '',
@@ -94,24 +96,95 @@ export function AuthPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await signUp(
-      registerForm.email,
-      registerForm.password,
-      registerForm.headmasterName,
-      'SCHOOL_USER'
-    );
+    try {
+      // Validate promo code if provided
+      let agentId: string | null = null;
+      let promoCodeUsed: string | null = null;
+      
+      if (registerForm.promoCode.trim()) {
+        const normalizedCode = registerForm.promoCode.trim().toUpperCase();
+        
+        // First check if it's an invitational code
+        const { data: codeData, error: codeError } = await supabase
+          .from('agent_invitational_codes')
+          .select('*, agents!inner(id, user_id)')
+          .eq('code', normalizedCode)
+          .eq('is_used', false)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
 
-    if (error) {
+        if (codeData) {
+          agentId = codeData.agent_id;
+          promoCodeUsed = codeData.code;
+        } else {
+          // Check if it's a staff ID (agent's promo code)
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('user_id')
+            .ilike('staff_id', normalizedCode)
+            .eq('role', 'AGENT')
+            .maybeSingle();
+
+          if (staffData) {
+            const { data: agentData } = await supabase
+              .from('agents')
+              .select('id')
+              .eq('user_id', staffData.user_id)
+              .single();
+
+            if (agentData) {
+              agentId = agentData.id;
+              promoCodeUsed = normalizedCode;
+            }
+          }
+        }
+
+        // If code provided but not found/valid, show warning but continue
+        if (!agentId && registerForm.promoCode.trim()) {
+          toast({
+            title: 'Invalid Promo Code',
+            description: 'The promo code entered is invalid or expired. Registration will continue without referral.',
+            variant: 'destructive'
+          });
+        }
+      }
+
+      const { error } = await signUp(
+        registerForm.email,
+        registerForm.password,
+        registerForm.headmasterName,
+        'SCHOOL_USER'
+      );
+
+      if (error) {
+        toast({
+          title: 'Registration Failed',
+          description: error.message,
+          variant: 'destructive'
+        });
+      } else {
+        // Store promo code info in localStorage temporarily for post-confirmation processing
+        if (agentId && promoCodeUsed) {
+          localStorage.setItem('pendingReferral', JSON.stringify({
+            agentId,
+            promoCode: promoCodeUsed,
+            schoolName: registerForm.schoolName,
+            email: registerForm.email
+          }));
+        }
+        
+        setEmailSent(true);
+        toast({
+          title: 'School Registered!',
+          description: `We've sent a confirmation email to ${registerForm.email}`
+        });
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
       toast({
         title: 'Registration Failed',
-        description: error.message,
+        description: error.message || 'An unexpected error occurred',
         variant: 'destructive'
-      });
-    } else {
-      setEmailSent(true);
-      toast({
-        title: 'School Registered!',
-        description: `We've sent a confirmation email to ${registerForm.email}`
       });
     }
 
@@ -520,6 +593,23 @@ export function AuthPage() {
                       className="min-h-[80px] bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300"
                       placeholder="Enter your school's full address"
                     />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="promo-code" className="text-sm font-semibold text-foreground">
+                      Agent ID / Promo Code <span className="text-muted-foreground font-normal">(Optional)</span>
+                    </Label>
+                    <Input
+                      id="promo-code"
+                      type="text"
+                      value={registerForm.promoCode}
+                      onChange={(e) => setRegisterForm({ ...registerForm, promoCode: e.target.value.toUpperCase() })}
+                      className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 uppercase font-mono"
+                      placeholder="e.g., AGENT123ABC or ABC123XYZ0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      If you have an agent's promo code or invitational code, enter it here
+                    </p>
                   </div>
                 </>
               )}

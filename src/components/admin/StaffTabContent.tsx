@@ -35,6 +35,7 @@ interface StaffTabContentProps {
 
 export function StaffTabContent({ onRefresh }: StaffTabContentProps) {
   const [staff, setStaff] = useState<any[]>([]);
+  const [agentDetails, setAgentDetails] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [showEditStaff, setShowEditStaff] = useState(false);
@@ -87,6 +88,26 @@ export function StaffTabContent({ onRefresh }: StaffTabContentProps) {
       
       if (error) throw error;
       setStaff(data || []);
+      
+      // Fetch agent details for AGENT role staff members
+      const agentUserIds = (data || [])
+        .filter(s => s.role === 'AGENT' && s.user_id)
+        .map(s => s.user_id);
+      
+      if (agentUserIds.length > 0) {
+        const { data: agents } = await supabase
+          .from('agents')
+          .select('user_id, business_name, country, region')
+          .in('user_id', agentUserIds);
+        
+        if (agents) {
+          const agentMap: Record<string, any> = {};
+          agents.forEach(a => {
+            agentMap[a.user_id] = a;
+          });
+          setAgentDetails(agentMap);
+        }
+      }
     } catch (error) {
       console.error('Error fetching staff:', error);
       toast.error('Failed to load staff data');
@@ -488,7 +509,16 @@ export function StaffTabContent({ onRefresh }: StaffTabContentProps) {
                   >
                     <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="font-mono text-sm">{member.staff_id}</TableCell>
-                    <TableCell className="font-medium">{member.full_name}</TableCell>
+                    <TableCell>
+                      <div>
+                        <span className="font-medium">{member.full_name}</span>
+                        {member.role === 'AGENT' && agentDetails[member.user_id] && (
+                          <div className="text-xs text-muted-foreground">
+                            {agentDetails[member.user_id].business_name} • {agentDetails[member.user_id].region}, {agentDetails[member.user_id].country}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{member.email}</TableCell>
                     <TableCell>
                       <Badge className={getRoleBadgeColor(member.role)}>
