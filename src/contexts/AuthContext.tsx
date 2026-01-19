@@ -81,6 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       case 'SUPERVISOR':
         navigate('/auditor');
         break;
+      case 'AGENT':
+        navigate('/agent');
+        break;
       case 'SCHOOL_USER':
         navigate('/school/dashboard');
         break;

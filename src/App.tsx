@@ -11,6 +11,7 @@ import SchoolDashboard from "./pages/school/SchoolDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AuditorDashboard from "./pages/auditor/AuditorDashboard";
 import AuditSessionPage from "./pages/auditor/AuditSessionPage";
+import AgentDashboard from "./pages/agent/AgentDashboard";
 import FeaturesPage from "./pages/FeaturesPage";
 import DemoPage from "./pages/DemoPage";
 import AboutPage from "./pages/AboutPage";
@@ -59,6 +60,13 @@ const App = () => (
             <Route path="/auditor/audit/:auditId" element={
               <ProtectedRoute allowedRoles={['AUDITOR', 'OPERATOR', 'SUPERVISOR', 'ADMIN']}>
                 <AuditSessionPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Agent Portal */}
+            <Route path="/agent/*" element={
+              <ProtectedRoute allowedRoles={['AGENT']}>
+                <AgentDashboard />
               </ProtectedRoute>
             } />
 

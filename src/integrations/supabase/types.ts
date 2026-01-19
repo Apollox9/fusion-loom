@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_invitational_codes: {
+        Row: {
+          agent_id: string
+          agent_staff_id: string
+          code: string
+          created_at: string
+          credit_worth_factor: number
+          expires_at: string
+          id: string
+          is_used: boolean
+          school_name: string | null
+          used_at: string | null
+          used_by_school_id: string | null
+          used_by_user_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          agent_staff_id: string
+          code: string
+          created_at?: string
+          credit_worth_factor?: number
+          expires_at?: string
+          id?: string
+          is_used?: boolean
+          school_name?: string | null
+          used_at?: string | null
+          used_by_school_id?: string | null
+          used_by_user_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          agent_staff_id?: string
+          code?: string
+          created_at?: string
+          credit_worth_factor?: number
+          expires_at?: string
+          id?: string
+          is_used?: boolean
+          school_name?: string | null
+          used_at?: string | null
+          used_by_school_id?: string | null
+          used_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_invitational_codes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_invitational_codes_used_by_school_id_fkey"
+            columns: ["used_by_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           business_name: string
@@ -23,6 +83,8 @@ export type Database = {
           region: string | null
           registered_at: string
           sessions_organised: number
+          total_credits: number
+          total_schools_referred: number
           updated_at: string
           user_id: string | null
         }
@@ -34,6 +96,8 @@ export type Database = {
           region?: string | null
           registered_at?: string
           sessions_organised?: number
+          total_credits?: number
+          total_schools_referred?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -45,6 +109,8 @@ export type Database = {
           region?: string | null
           registered_at?: string
           sessions_organised?: number
+          total_credits?: number
+          total_schools_referred?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -913,6 +979,9 @@ export type Database = {
           phone_number1: string | null
           phone_number2: string | null
           postal_address: string | null
+          referral_code_used: string | null
+          referred_at: string | null
+          referred_by_agent_id: string | null
           region: string | null
           registered_on: string | null
           school_id: string | null
@@ -937,6 +1006,9 @@ export type Database = {
           phone_number1?: string | null
           phone_number2?: string | null
           postal_address?: string | null
+          referral_code_used?: string | null
+          referred_at?: string | null
+          referred_by_agent_id?: string | null
           region?: string | null
           registered_on?: string | null
           school_id?: string | null
@@ -961,6 +1033,9 @@ export type Database = {
           phone_number1?: string | null
           phone_number2?: string | null
           postal_address?: string | null
+          referral_code_used?: string | null
+          referred_at?: string | null
+          referred_by_agent_id?: string | null
           region?: string | null
           registered_on?: string | null
           school_id?: string | null
@@ -970,7 +1045,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schools_referred_by_agent_id_fkey"
+            columns: ["referred_by_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff: {
         Row: {

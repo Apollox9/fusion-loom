@@ -82,7 +82,7 @@ export function useRoleBasedAuth() {
         navigate('/auditor', { replace: true });
         break;
       case 'AGENT':
-        navigate('/admin/dashboard', { replace: true }); // Agents go to admin portal
+        navigate('/agent', { replace: true });
         break;
       default:
         navigate('/auth', { replace: true });
@@ -92,8 +92,9 @@ export function useRoleBasedAuth() {
   const isOnCorrectPortal = (role: UserRole, path: string): boolean => {
     switch (role) {
       case 'ADMIN':
-      case 'AGENT':
         return path.startsWith('/admin/');
+      case 'AGENT':
+        return path.startsWith('/agent');
       case 'SCHOOL_USER':
         return path.startsWith('/school/');
       case 'AUDITOR':
