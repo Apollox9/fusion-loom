@@ -1374,6 +1374,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_agent_schools_referred: {
+        Args: { agent_uuid: string }
+        Returns: undefined
+      }
     }
     Enums: {
       notification_channel: "IN_APP" | "EMAIL" | "SMS" | "PUSH"

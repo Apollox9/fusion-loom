@@ -213,9 +213,20 @@ export function AuthPage() {
           })
           .eq('id', promoCodeId);
 
-        // Update agent's total_schools_referred
+        // Update agent's total_schools_referred using raw SQL increment
         if (agentId) {
-          await supabase.rpc('increment_agent_schools_referred', { agent_uuid: agentId });
+          const { data: agentData } = await supabase
+            .from('agents')
+            .select('total_schools_referred')
+            .eq('id', agentId)
+            .single();
+          
+          if (agentData) {
+            await supabase
+              .from('agents')
+              .update({ total_schools_referred: (agentData.total_schools_referred || 0) + 1 })
+              .eq('id', agentId);
+          }
         }
 
         // Notify agent via edge function
@@ -682,7 +693,7 @@ export function AuthPage() {
                   
                   <div className="space-y-2">
                     <Label htmlFor="promo-code" className="text-sm font-semibold text-foreground">
-                      Agent ID / Promo Code <span className="text-muted-foreground font-normal">(Optional)</span>
+                      Promo Code <span className="text-muted-foreground font-normal">(Optional)</span>
                     </Label>
                     <Input
                       id="promo-code"
@@ -690,10 +701,10 @@ export function AuthPage() {
                       value={registerForm.promoCode}
                       onChange={(e) => setRegisterForm({ ...registerForm, promoCode: e.target.value.toUpperCase() })}
                       className="h-10 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 transition-all duration-300 uppercase font-mono"
-                      placeholder="e.g., AGENT123ABC or ABC123XYZ0"
+                      placeholder="e.g., ABC123XYZ0"
                     />
                     <p className="text-xs text-muted-foreground">
-                      If you have an agent's promo code or invitational code, enter it here
+                      If you have a promo code from an agent, enter it here to get exclusive benefits
                     </p>
                   </div>
                 </>

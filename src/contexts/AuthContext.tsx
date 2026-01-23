@@ -24,6 +24,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        // Handle school confirmation when user confirms email
+        handleSchoolConfirmation(session.user);
       } else {
         setLoading(false);
       }
@@ -32,10 +34,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        // Handle school confirmation on email verification
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          handleSchoolConfirmation(session.user);
+        }
       } else {
         setProfile(null);
         setLoading(false);
@@ -44,6 +50,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleSchoolConfirmation = async (user: User) => {
+    try {
+      const userEmail = user.email?.toLowerCase();
+      if (!userEmail) return;
+
+      // Find unconfirmed school by email and update status + link user_id
+      const { data: school, error } = await supabase
+        .from('schools')
+        .select('id, status, user_id')
+        .eq('email', userEmail)
+        .eq('status', 'unconfirmed')
+        .maybeSingle();
+
+      if (school && !school.user_id) {
+        await supabase
+          .from('schools')
+          .update({
+            status: 'confirmed',
+            user_id: user.id,
+            registered_on: new Date().toISOString()
+          })
+          .eq('id', school.id);
+        
+        // Clear pending school ID from localStorage
+        localStorage.removeItem('pendingSchoolId');
+      }
+    } catch (error) {
+      console.error('Error confirming school:', error);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
