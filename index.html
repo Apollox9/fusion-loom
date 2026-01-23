@@ -3,27 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- GitHub Pages SPA Redirect Fix -->
     <script>
-      (function(l){
-        // Handle GitHub Pages SPA redirect (from 404.html -> /?/path)
-        if (l.search && l.search.startsWith('?/')) {
-          var path = l.search.slice(2).split('&').join('?');
-          window.history.replaceState(null, null, '/' + path + l.hash);
+      (function (l) {
+        if (l.search && l.search.startsWith("?/")) {
+          var path = l.search.slice(2).split("&").join("?");
+          window.history.replaceState(null, null, "/" + path + l.hash);
         }
       })(window.location);
     </script>
-    <title>Project Fusion - We make it permanent</title>
-    <meta name="description" content="We make it permanent" />
-    <meta name="author" content="Blaqlogic digitals" />
 
-    <meta property="og:title" content="Project Fusion" />
-    <meta property="og:description" content="We make it permanent" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <!-- Basic SEO -->
+    <title>Project Fusion Official Site | We Make It Permanent</title>
+    <meta
+  name="description"
+  content="Project Fusion builds permanent garment name-printing solutions for students. Reliable, scalable, and designed for African schools."
+  />
 
+    <meta name="author" content="Blaqlogic Digitals" />
+
+    <!-- Open Graph (WhatsApp, Facebook, LinkedIn) -->
+    <meta property="og:site_name" content="Project Fusion" />
+    <meta property="og:title" content="Project Fusion Official Site" />
+    <meta
+      property="og:description"
+      content="Permanent garment name-printing systems built for schools across Africa."
+    />
+    <meta property="og:url" content="https://projectfusion.cloud" />
+    <meta property="og:image" content="https://projectfusion.cloud/og-image.png" />
+
+
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:title" content="Project Fusion" />
+    <meta name="twitter:description" content="We make it permanent." />
+    <meta name="twitter:image" content="https://projectfusion.cloud/og-image.png" />
   </head>
 
   <body>
