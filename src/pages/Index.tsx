@@ -170,7 +170,7 @@ const Index = () => {
         <div className="relative z-10 h-full flex flex-col items-center justify-center px-6 text-center">
           <div className="animate-fade-in-up max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display mb-6 leading-tight text-white drop-shadow-2xl">
-              Effortless Uniform
+              Automated Uniform
               <br />
               Printing for Smart Schools
             </h1>
