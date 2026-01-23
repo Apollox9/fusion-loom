@@ -46,12 +46,15 @@ export function SchoolSettings() {
   }, [user]);
 
   const fetchSchoolData = async () => {
+    if (!user) return;
+    
     try {
-      // Try to get school data first
+      // Get school data by matching email
+      const userEmail = user.email?.toLowerCase();
       const { data: schoolData } = await supabase
         .from('schools')
         .select('*')
-        .limit(1)
+        .eq('email', userEmail)
         .maybeSingle();
 
       if (schoolData) {
@@ -107,12 +110,13 @@ export function SchoolSettings() {
 
     try {
       const studentCount = getStudentCountFromRange(formData.studentCount);
+      const userEmail = user?.email?.toLowerCase();
 
-      // Check if school exists
+      // Find school by email match
       const { data: existingSchool } = await supabase
         .from('schools')
         .select('id')
-        .limit(1)
+        .eq('email', userEmail)
         .maybeSingle();
 
       const schoolPayload = {
@@ -120,7 +124,7 @@ export function SchoolSettings() {
         headmaster_name: formData.headmasterName,
         category: formData.schoolType,
         total_student_count: studentCount,
-        email: formData.email,
+        email: formData.email.toLowerCase(),
         phone_number1: formData.phoneNumber,
         postal_address: formData.postalAddress,
         country: formData.country,
@@ -137,15 +141,13 @@ export function SchoolSettings() {
 
         if (schoolError) throw schoolError;
       } else {
-        // Insert new school
-        const { error: schoolError } = await supabase
-          .from('schools')
-          .insert({
-            ...schoolPayload,
-            service_pass_code: Math.random().toString(36).substring(2, 10).toUpperCase()
-          });
-
-        if (schoolError) throw schoolError;
+        toast({
+          title: 'No School Found',
+          description: 'Could not find a school associated with your account. Please contact support.',
+          variant: 'destructive'
+        });
+        setLoading(false);
+        return;
       }
 
       // Update profile
