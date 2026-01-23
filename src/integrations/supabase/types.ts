@@ -966,6 +966,7 @@ export type Database = {
       schools: {
         Row: {
           category: string | null
+          confirmation_expires_at: string | null
           country: string | null
           created_at: string
           district: string | null
@@ -986,6 +987,7 @@ export type Database = {
           registered_on: string | null
           school_id: string | null
           service_pass_code: string
+          status: string
           total_student_count: number
           total_students_served_in_school: number
           updated_at: string
@@ -993,6 +995,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          confirmation_expires_at?: string | null
           country?: string | null
           created_at?: string
           district?: string | null
@@ -1013,6 +1016,7 @@ export type Database = {
           registered_on?: string | null
           school_id?: string | null
           service_pass_code: string
+          status?: string
           total_student_count?: number
           total_students_served_in_school?: number
           updated_at?: string
@@ -1020,6 +1024,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          confirmation_expires_at?: string | null
           country?: string | null
           created_at?: string
           district?: string | null
@@ -1040,6 +1045,7 @@ export type Database = {
           registered_on?: string | null
           school_id?: string | null
           service_pass_code?: string
+          status?: string
           total_student_count?: number
           total_students_served_in_school?: number
           updated_at?: string
