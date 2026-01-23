@@ -92,14 +92,43 @@ export function AuthPage() {
     }, 1000);
   };
 
+  const getStudentCountFromRange = (range: string): number => {
+    switch (range) {
+      case 'less-100': return 50;
+      case '100-200': return 150;
+      case '200-500': return 350;
+      case '500+': return 600;
+      default: return 0;
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Validate promo code if provided (ONLY invitational codes are accepted)
+      // Step 1: Check if email already exists in schools table
+      const { data: existingSchool } = await supabase
+        .from('schools')
+        .select('id, email, status')
+        .eq('email', registerForm.email.toLowerCase())
+        .maybeSingle();
+
+      if (existingSchool && existingSchool.status === 'confirmed') {
+        setLoading(false);
+        toast({
+          title: 'Email Already Registered',
+          description: 'This email is already associated with a confirmed school. Please sign in instead.',
+          variant: 'destructive'
+        });
+        setCurrentStep(2); // Go back to email step
+        return;
+      }
+
+      // Step 2: Validate promo code if provided (ONLY invitational codes are accepted)
       let agentId: string | null = null;
       let promoCodeUsed: string | null = null;
+      let promoCodeId: string | null = null;
       
       if (registerForm.promoCode.trim()) {
         const normalizedCode = registerForm.promoCode.trim().toUpperCase();
@@ -107,7 +136,7 @@ export function AuthPage() {
         // Only check for invitational codes (generated promo codes)
         const { data: codeData, error: codeError } = await supabase
           .from('agent_invitational_codes')
-          .select('*, agents!inner(id, user_id)')
+          .select('id, code, agent_id, is_used, expires_at')
           .eq('code', normalizedCode)
           .eq('is_used', false)
           .gt('expires_at', new Date().toISOString())
@@ -116,16 +145,98 @@ export function AuthPage() {
         if (codeData) {
           agentId = codeData.agent_id;
           promoCodeUsed = codeData.code;
+          promoCodeId = codeData.id;
         } else {
-          // Code provided but not found/valid - show warning but continue registration
+          // Code provided but not found/valid - show error and stop
+          setLoading(false);
           toast({
             title: 'Invalid Promo Code',
-            description: 'The promo code entered is invalid, expired, or already used. Registration will continue without referral.',
+            description: 'The promo code entered is invalid, expired, or already used. Please check and try again, or leave it empty.',
             variant: 'destructive'
           });
+          setCurrentStep(2); // Go back to promo code step
+          return;
         }
       }
 
+      // Step 3: Create the school record with 'unconfirmed' status
+      const schoolData = {
+        name: registerForm.schoolName,
+        headmaster_name: registerForm.headmasterName,
+        category: registerForm.schoolType,
+        total_student_count: getStudentCountFromRange(registerForm.studentCount),
+        email: registerForm.email.toLowerCase(),
+        phone_number1: registerForm.phone,
+        postal_address: registerForm.address,
+        country: registerForm.country,
+        region: registerForm.region,
+        district: registerForm.district,
+        status: 'unconfirmed',
+        confirmation_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        service_pass_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
+        referred_by_agent_id: agentId,
+        referral_code_used: promoCodeUsed,
+        referred_at: agentId ? new Date().toISOString() : null
+      };
+
+      // Delete any existing unconfirmed school with this email
+      if (existingSchool && existingSchool.status === 'unconfirmed') {
+        await supabase.from('schools').delete().eq('id', existingSchool.id);
+      }
+
+      const { data: newSchool, error: schoolError } = await supabase
+        .from('schools')
+        .insert(schoolData)
+        .select()
+        .single();
+
+      if (schoolError) {
+        console.error('School creation error:', schoolError);
+        setLoading(false);
+        toast({
+          title: 'Registration Failed',
+          description: schoolError.message,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Step 4: Mark promo code as used if valid
+      if (promoCodeId && newSchool) {
+        await supabase
+          .from('agent_invitational_codes')
+          .update({
+            is_used: true,
+            used_by_school_id: newSchool.id,
+            school_name: registerForm.schoolName,
+            used_at: new Date().toISOString()
+          })
+          .eq('id', promoCodeId);
+
+        // Update agent's total_schools_referred
+        if (agentId) {
+          await supabase.rpc('increment_agent_schools_referred', { agent_uuid: agentId });
+        }
+
+        // Notify agent via edge function
+        try {
+          await supabase.functions.invoke('notify-agent-code-used', {
+            body: {
+              codeId: promoCodeId,
+              schoolName: registerForm.schoolName,
+              schoolEmail: registerForm.email,
+              schoolCountry: registerForm.country,
+              schoolRegion: registerForm.region,
+              schoolDistrict: registerForm.district
+            }
+          });
+        } catch (notifyError) {
+          console.error('Failed to notify agent:', notifyError);
+          // Don't fail registration if notification fails
+        }
+      }
+
+      // Step 5: Sign up the user
       const { error } = await signUp(
         registerForm.email,
         registerForm.password,
@@ -134,26 +245,23 @@ export function AuthPage() {
       );
 
       if (error) {
+        // If signup fails, delete the school record
+        if (newSchool) {
+          await supabase.from('schools').delete().eq('id', newSchool.id);
+        }
         toast({
           title: 'Registration Failed',
           description: error.message,
           variant: 'destructive'
         });
       } else {
-        // Store promo code info in localStorage temporarily for post-confirmation processing
-        if (agentId && promoCodeUsed) {
-          localStorage.setItem('pendingReferral', JSON.stringify({
-            agentId,
-            promoCode: promoCodeUsed,
-            schoolName: registerForm.schoolName,
-            email: registerForm.email
-          }));
-        }
+        // Store school ID for linking after confirmation
+        localStorage.setItem('pendingSchoolId', newSchool.id);
         
         setEmailSent(true);
         toast({
           title: 'School Registered!',
-          description: `We've sent a confirmation email to ${registerForm.email}`
+          description: `We've sent a confirmation email to ${registerForm.email}. Please confirm within 24 hours.`
         });
       }
     } catch (error: any) {
