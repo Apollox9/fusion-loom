@@ -97,14 +97,14 @@ export function AuthPage() {
     setLoading(true);
 
     try {
-      // Validate promo code if provided
+      // Validate promo code if provided (ONLY invitational codes are accepted)
       let agentId: string | null = null;
       let promoCodeUsed: string | null = null;
       
       if (registerForm.promoCode.trim()) {
         const normalizedCode = registerForm.promoCode.trim().toUpperCase();
         
-        // First check if it's an invitational code
+        // Only check for invitational codes (generated promo codes)
         const { data: codeData, error: codeError } = await supabase
           .from('agent_invitational_codes')
           .select('*, agents!inner(id, user_id)')
@@ -117,33 +117,10 @@ export function AuthPage() {
           agentId = codeData.agent_id;
           promoCodeUsed = codeData.code;
         } else {
-          // Check if it's a staff ID (agent's promo code)
-          const { data: staffData } = await supabase
-            .from('staff')
-            .select('user_id')
-            .ilike('staff_id', normalizedCode)
-            .eq('role', 'AGENT')
-            .maybeSingle();
-
-          if (staffData) {
-            const { data: agentData } = await supabase
-              .from('agents')
-              .select('id')
-              .eq('user_id', staffData.user_id)
-              .single();
-
-            if (agentData) {
-              agentId = agentData.id;
-              promoCodeUsed = normalizedCode;
-            }
-          }
-        }
-
-        // If code provided but not found/valid, show warning but continue
-        if (!agentId && registerForm.promoCode.trim()) {
+          // Code provided but not found/valid - show warning but continue registration
           toast({
             title: 'Invalid Promo Code',
-            description: 'The promo code entered is invalid or expired. Registration will continue without referral.',
+            description: 'The promo code entered is invalid, expired, or already used. Registration will continue without referral.',
             variant: 'destructive'
           });
         }

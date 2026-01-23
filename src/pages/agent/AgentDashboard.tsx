@@ -118,17 +118,28 @@ export default function AgentDashboard() {
       if (schoolsError) throw schoolsError;
       setReferredSchools(schools || []);
 
-      // Fetch orders from referred schools
+      // Fetch ONLY the first order from each referred school (for commission calculation)
       if (schools && schools.length > 0) {
         const schoolIds = schools.map(s => s.id);
         const { data: ordersData, error: ordersError } = await supabase
           .from('orders')
           .select('*')
           .in('created_by_school', schoolIds)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: true }); // Get oldest first
 
         if (!ordersError && ordersData) {
-          setOrders(ordersData);
+          // Filter to only keep the first order per school
+          const firstOrderPerSchool: AgentOrder[] = [];
+          const seenSchools = new Set<string>();
+          
+          for (const order of ordersData) {
+            if (!seenSchools.has(order.created_by_school)) {
+              seenSchools.add(order.created_by_school);
+              firstOrderPerSchool.push(order);
+            }
+          }
+          
+          setOrders(firstOrderPerSchool);
         }
       }
     } catch (error) {
@@ -345,22 +356,13 @@ export default function AgentDashboard() {
                     Create New Invitational Code
                   </Button>
                   <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm font-medium mb-2">Your Staff ID (Promo Code)</p>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 p-2 bg-background rounded text-lg font-mono">
-                        {agentData?.id ? invitationalCodes[0]?.agent_staff_id || 'Loading...' : 'Loading...'}
-                      </code>
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => copyToClipboard(invitationalCodes[0]?.agent_staff_id || '')}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Schools can use this code during registration
-                    </p>
+                    <p className="text-sm font-medium mb-2">How It Works</p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Create invitational codes above</li>
+                      <li>• Share codes with schools during registration</li>
+                      <li>• When a school uses your code and places their first order, you earn 2% commission</li>
+                      <li>• Faster code usage = higher credit multiplier</li>
+                    </ul>
                   </div>
                 </CardContent>
               </Card>
@@ -542,8 +544,8 @@ export default function AgentDashboard() {
           <TabsContent value="orders">
             <Card>
               <CardHeader>
-                <CardTitle>School Orders</CardTitle>
-                <CardDescription>Orders placed by your referred schools</CardDescription>
+                <CardTitle>First Orders (Commission Eligible)</CardTitle>
+                <CardDescription>Only the first order from each referred school qualifies for commission</CardDescription>
               </CardHeader>
               <CardContent>
                 {orders.length === 0 ? (
