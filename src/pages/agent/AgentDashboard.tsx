@@ -60,10 +60,13 @@ interface AgentOrder {
   id: string;
   external_ref: string;
   school_name: string;
+  school_id: string;
   total_amount: number;
   total_garments: number;
   status: string;
   created_at: string;
+  credit_worth_factor: number;
+  commission: number;
 }
 
 export default function AgentDashboard() {
@@ -85,6 +88,50 @@ export default function AgentDashboard() {
       fetchAgentData();
     }
   }, [profile]);
+
+  // Real-time subscription for orders updates
+  useEffect(() => {
+    if (!agentData) return;
+
+    // Subscribe to orders changes for referred schools
+    const ordersChannel = supabase
+      .channel('agent-orders-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        () => {
+          // Refetch orders when any order changes
+          fetchFirstOrders(referredSchools, invitationalCodes);
+        }
+      )
+      .subscribe();
+
+    // Subscribe to schools changes
+    const schoolsChannel = supabase
+      .channel('agent-schools-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'schools'
+        },
+        () => {
+          // Refetch all agent data when schools change
+          fetchAgentData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(schoolsChannel);
+    };
+  }, [agentData, referredSchools, invitationalCodes]);
 
   const fetchAgentData = async () => {
     try {
@@ -113,39 +160,84 @@ export default function AgentDashboard() {
         .from('schools')
         .select('*')
         .eq('referred_by_agent_id', agent.id)
+        .eq('status', 'confirmed')
         .order('referred_at', { ascending: false });
 
       if (schoolsError) throw schoolsError;
       setReferredSchools(schools || []);
 
-      // Fetch ONLY the first order from each referred school (for commission calculation)
-      if (schools && schools.length > 0) {
-        const schoolIds = schools.map(s => s.id);
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
-          .select('*')
-          .in('created_by_school', schoolIds)
-          .order('created_at', { ascending: true }); // Get oldest first
-
-        if (!ordersError && ordersData) {
-          // Filter to only keep the first order per school
-          const firstOrderPerSchool: AgentOrder[] = [];
-          const seenSchools = new Set<string>();
-          
-          for (const order of ordersData) {
-            if (!seenSchools.has(order.created_by_school)) {
-              seenSchools.add(order.created_by_school);
-              firstOrderPerSchool.push(order);
-            }
-          }
-          
-          setOrders(firstOrderPerSchool);
-        }
-      }
+      // Fetch first orders with commission calculation
+      await fetchFirstOrders(schools || [], codes || []);
     } catch (error) {
       console.error('Error fetching agent data:', error);
       toast.error('Failed to load agent data');
     }
+  };
+
+  const fetchFirstOrders = async (schools: ReferredSchool[], codes: InvitationalCode[]) => {
+    if (!schools || schools.length === 0) {
+      setOrders([]);
+      return;
+    }
+
+    const schoolIds = schools.map(s => s.id);
+    const { data: ordersData, error: ordersError } = await supabase
+      .from('orders')
+      .select('*')
+      .in('created_by_school', schoolIds)
+      .order('created_at', { ascending: true });
+
+    if (ordersError) {
+      console.error('Error fetching orders:', ordersError);
+      return;
+    }
+
+    // Create a map of school_id to referral_code_used
+    const schoolCodeMap = new Map<string, string>();
+    schools.forEach(s => {
+      if (s.referral_code_used) {
+        schoolCodeMap.set(s.id, s.referral_code_used);
+      }
+    });
+
+    // Create a map of code to credit_worth_factor
+    const codeFactorMap = new Map<string, number>();
+    codes.forEach(c => {
+      codeFactorMap.set(c.code, c.credit_worth_factor);
+    });
+
+    // Filter to only keep the first order per school and calculate commission
+    const firstOrderPerSchool: AgentOrder[] = [];
+    const seenSchools = new Set<string>();
+    
+    for (const order of ordersData || []) {
+      if (!seenSchools.has(order.created_by_school)) {
+        seenSchools.add(order.created_by_school);
+        
+        // Get the credit_worth_factor from the code used by this school
+        const codeUsed = schoolCodeMap.get(order.created_by_school);
+        const creditWorthFactor = codeUsed ? (codeFactorMap.get(codeUsed) || 1.0) : 1.0;
+        
+        // Calculate commission: 2% * credit_worth_factor * total_amount
+        const orderAmount = Number(order.total_amount) || 0;
+        const commission = orderAmount * 0.02 * creditWorthFactor;
+        
+        firstOrderPerSchool.push({
+          id: order.id,
+          external_ref: order.external_ref,
+          school_name: order.school_name,
+          school_id: order.created_by_school,
+          total_amount: orderAmount,
+          total_garments: order.total_garments,
+          status: order.status,
+          created_at: order.created_at,
+          credit_worth_factor: creditWorthFactor,
+          commission
+        });
+      }
+    }
+    
+    setOrders(firstOrderPerSchool);
   };
 
   const generateCode = () => {
@@ -213,9 +305,10 @@ export default function AgentDashboard() {
     const activeCodesCount = invitationalCodes.filter(c => !c.is_used && new Date(c.expires_at) > new Date()).length;
     const usedCodesCount = invitationalCodes.filter(c => c.is_used).length;
     const totalOrderValue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
-    const estimatedCommission = totalOrderValue * 0.02; // 2% base commission
+    // Sum of all commissions (already calculated per order with credit_worth_factor)
+    const totalCommission = orders.reduce((sum, o) => sum + (o.commission || 0), 0);
     
-    return { totalSchools, totalCredits, activeCodesCount, usedCodesCount, totalOrderValue, estimatedCommission };
+    return { totalSchools, totalCredits, activeCodesCount, usedCodesCount, totalOrderValue, totalCommission };
   }, [referredSchools, invitationalCodes, orders, agentData]);
 
   const filteredSchools = useMemo(() => {
@@ -324,12 +417,12 @@ export default function AgentDashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Est. Commission</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">TZS {stats.estimatedCommission.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">2% of order value</p>
+              <div className="text-2xl font-bold text-primary">TZS {stats.totalCommission.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">2% × credit factor</p>
             </CardContent>
           </Card>
         </div>
@@ -562,8 +655,9 @@ export default function AgentDashboard() {
                         <TableHead>School</TableHead>
                         <TableHead>Garments</TableHead>
                         <TableHead>Amount</TableHead>
+                        <TableHead>Credit Factor</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Commission (2%)</TableHead>
+                        <TableHead>Commission</TableHead>
                         <TableHead>Date</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -575,12 +669,15 @@ export default function AgentDashboard() {
                           <TableCell>{order.total_garments}</TableCell>
                           <TableCell>TZS {(order.total_amount || 0).toLocaleString()}</TableCell>
                           <TableCell>
+                            <Badge variant="outline">{order.credit_worth_factor.toFixed(2)}x</Badge>
+                          </TableCell>
+                          <TableCell>
                             <Badge variant={order.status === 'COMPLETED' ? 'default' : 'secondary'}>
                               {order.status}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-primary font-medium">
-                            TZS {((order.total_amount || 0) * 0.02).toLocaleString()}
+                            TZS {order.commission.toLocaleString()}
                           </TableCell>
                           <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
                         </TableRow>
