@@ -84,7 +84,7 @@ const AboutPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <Card className="text-center hover-lift">
               <CardHeader>
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-xl bg-gradient-hero flex items-center justify-center mx-auto mb-4">
                   <Target className="w-8 h-8 text-primary-foreground" />
                 </div>
                 <CardTitle className="text-xl font-display">Excellence</CardTitle>
@@ -99,7 +99,7 @@ const AboutPage = () => {
 
             <Card className="text-center hover-lift">
               <CardHeader>
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-xl bg-gradient-hero flex items-center justify-center mx-auto mb-4">
                   <Users className="w-8 h-8 text-primary-foreground" />
                 </div>
                 <CardTitle className="text-xl font-display">Partnership</CardTitle>
@@ -114,7 +114,7 @@ const AboutPage = () => {
 
             <Card className="text-center hover-lift">
               <CardHeader>
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-xl bg-gradient-hero flex items-center justify-center mx-auto mb-4">
                   <Zap className="w-8 h-8 text-primary-foreground" />
                 </div>
                 <CardTitle className="text-xl font-display">Innovation</CardTitle>
@@ -129,7 +129,7 @@ const AboutPage = () => {
 
             <Card className="text-center hover-lift">
               <CardHeader>
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-xl bg-gradient-hero flex items-center justify-center mx-auto mb-4">
                   <Heart className="w-8 h-8 text-primary-foreground" />
                 </div>
                 <CardTitle className="text-xl font-display">Empowerment</CardTitle>
@@ -144,7 +144,7 @@ const AboutPage = () => {
 
             <Card className="text-center hover-lift">
               <CardHeader>
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-xl bg-gradient-hero flex items-center justify-center mx-auto mb-4">
                   <Award className="w-8 h-8 text-primary-foreground" />
                 </div>
                 <CardTitle className="text-xl font-display">Integrity</CardTitle>
@@ -159,7 +159,7 @@ const AboutPage = () => {
 
             <Card className="text-center hover-lift">
               <CardHeader>
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-xl bg-gradient-hero flex items-center justify-center mx-auto mb-4">
                   <Globe className="w-8 h-8 text-primary-foreground" />
                 </div>
                 <CardTitle className="text-xl font-display">Sustainability</CardTitle>
@@ -230,7 +230,7 @@ const AboutPage = () => {
           <Card className="shadow-lg">
             <CardContent className="p-8">
               <div className="text-center mb-8">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
+                <div className="w-24 h-24 rounded-full bg-gradient-hero flex items-center justify-center mx-auto mb-4">
                   <span className="text-2xl font-bold text-primary-foreground">BD</span>
                 </div>
                 <h3 className="text-2xl font-bold font-display">Blaqlogic Digitals Team</h3>
@@ -249,7 +249,7 @@ const AboutPage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-primary to-secondary">
+      <section className="py-20 px-6 bg-gradient-hero">
         <div className="container mx-auto text-center">
           <div className="animate-fade-in-up">
             <h2 className="text-4xl font-bold text-primary-foreground mb-6 font-display">
