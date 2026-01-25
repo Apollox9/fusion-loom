@@ -127,15 +127,19 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
     setIsSubmitting(true);
     
     try {
-      // Get school data
-      const { data: schoolData } = await supabase
+      // Get the school linked to the current user
+      const { data: schoolData, error: schoolError } = await supabase
         .from('schools')
         .select('*')
-        .limit(1)
+        .eq('user_id', user?.id)
         .maybeSingle();
 
-      if (!schoolData && !profile) {
-        throw new Error('School or profile data not found');
+      if (schoolError) {
+        console.error('Error fetching school:', schoolError);
+      }
+
+      if (!schoolData) {
+        throw new Error('School not found. Please ensure your account is properly linked to a school.');
       }
 
       // Upload receipt image to storage if provided
@@ -160,7 +164,8 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
       // Generate unique 10-character order ID
       const orderId = generateOrderId();
       
-      const schoolId = schoolData?.id || user?.id;
+      // Use the school's actual ID - this is critical for data isolation
+      const schoolId = schoolData.id;
 
       // Insert into pending_orders table for admin verification
       const { data: order, error: orderError } = await supabase
@@ -173,14 +178,14 @@ export function PaymentSubmission({ sessionData, onSubmit, onCancel }: PaymentSu
           total_light_garments: sessionData.totals.totalLightGarments,
           total_amount: totalAmount,
           session_data: sessionData,
-          country: schoolData?.country || profile?.country || 'Tanzania',
-          region: schoolData?.region || profile?.region || '',
-          district: schoolData?.district || profile?.district || '',
+          country: schoolData.country || 'Tanzania',
+          region: schoolData.region || '',
+          district: schoolData.district || '',
           payment_method: selectedPaymentMethod,
           receipt_number: receiptNumber || null,
           receipt_image_url: receiptImageUrl,
-          school_name: sessionData.schoolName || schoolData?.name || profile?.full_name,
-          headmaster_name: schoolData?.headmaster_name || profile?.full_name,
+          school_name: schoolData.name, // Always use the actual school name from DB
+          headmaster_name: schoolData.headmaster_name || profile?.full_name,
         })
         .select()
         .single();
