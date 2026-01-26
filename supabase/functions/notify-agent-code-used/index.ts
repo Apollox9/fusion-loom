@@ -39,10 +39,7 @@ const handler = async (req: Request): Promise<Response> => {
           business_name,
           country,
           region,
-          staff!inner(
-            email,
-            full_name
-          )
+          user_id
         )
       `)
       .eq('id', codeId)
@@ -56,42 +53,64 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const agentEmail = codeData.agents.staff.email;
-    const agentName = codeData.agents.staff.full_name;
+    // Get the agent's staff record for email
+    const { data: staffData, error: staffError } = await supabase
+      .from('staff')
+      .select('email, full_name')
+      .eq('user_id', codeData.agents.user_id)
+      .single();
+
+    if (staffError || !staffData) {
+      console.error('Error fetching staff data:', staffError);
+      return new Response(
+        JSON.stringify({ error: 'Staff not found' }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const agentEmail = staffData.email;
+    const agentName = staffData.full_name;
     const promoCode = codeData.code;
 
-    // For now, we'll log the email that would be sent
-    // In production, integrate with an email service like Resend
-    console.log('=== Agent Notification Email ===');
-    console.log(`To: ${agentEmail}`);
-    console.log(`Subject: 🎉 Your Promo Code ${promoCode} Was Used!`);
-    console.log(`
-      Hi ${agentName},
+    // Send email notification via send-agent-email function
+    try {
+      const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-agent-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        },
+        body: JSON.stringify({
+          type: 'code_used',
+          agentEmail: agentEmail,
+          agentName: agentName,
+          schoolName: schoolName,
+          schoolEmail: schoolEmail,
+          schoolCountry: schoolCountry,
+          schoolRegion: schoolRegion,
+          schoolDistrict: schoolDistrict,
+          promoCode: promoCode
+        })
+      });
 
-      Great news! A school has signed up using your promo code.
+      const emailResult = await emailResponse.json();
+      console.log('Email notification result:', emailResult);
+    } catch (emailError) {
+      console.error('Failed to send email:', emailError);
+      // Don't fail the function if email fails
+    }
 
-      School Details:
-      - Name: ${schoolName}
-      - Email: ${schoolEmail}
-      - Location: ${schoolDistrict}, ${schoolRegion}, ${schoolCountry}
-      - Promo Code Used: ${promoCode}
-      - Date: ${new Date().toLocaleDateString()}
+    // Log for debugging
+    console.log('=== Agent Notification ===');
+    console.log(`Agent: ${agentName} (${agentEmail})`);
+    console.log(`School: ${schoolName}`);
+    console.log(`Promo Code: ${promoCode}`);
+    console.log('===========================');
 
-      You will earn a 2% commission on their first order!
-
-      Keep sharing your promo codes to grow your referral network.
-
-      Best regards,
-      Project Fusion Team
-    `);
-    console.log('================================');
-
-    // Return success - email content is logged for now
-    // TODO: Integrate with Resend or another email service
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Agent notification logged successfully',
+        message: 'Agent notification sent successfully',
         agentEmail,
         schoolName 
       }),

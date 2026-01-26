@@ -494,6 +494,21 @@ export default function AdminDashboard() {
           }
         }
 
+        // Notify agent if this is the first order from a referred school
+        try {
+          await supabase.functions.invoke('notify-first-order', {
+            body: {
+              orderId: newOrder.id,
+              schoolId: pendingOrder.school_id,
+              schoolName: pendingOrder.school_name,
+              orderAmount: pendingOrder.total_amount || 0
+            }
+          });
+        } catch (notifyError) {
+          console.error('Failed to notify agent:', notifyError);
+          // Don't fail the order creation if notification fails
+        }
+
         // Delete from pending only after successful creation
         const { error: deleteError } = await supabase
           .from('pending_orders')

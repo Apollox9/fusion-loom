@@ -28,7 +28,10 @@ export function useAuth() {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, role: string = 'SCHOOL_USER') => {
-    const redirectUrl = `${window.location.origin}/`;
+    // Redirect to verification success page for SCHOOL_USER, otherwise home
+    const redirectUrl = role === 'SCHOOL_USER' 
+      ? `${window.location.origin}/verification-success`
+      : `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
       email,

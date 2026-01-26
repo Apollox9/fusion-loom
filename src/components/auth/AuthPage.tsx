@@ -201,15 +201,32 @@ export function AuthPage() {
         return;
       }
 
-      // Step 4: Mark promo code as used if valid
+      // Step 4: Mark promo code as used if valid and freeze credit_worth_factor
       if (promoCodeId && newSchool) {
+        // Calculate the credit_worth_factor at the moment of code usage (freeze it)
+        const { data: codeDataForFactor } = await supabase
+          .from('agent_invitational_codes')
+          .select('created_at, credit_worth_factor')
+          .eq('id', promoCodeId)
+          .single();
+        
+        let frozenCreditFactor = 1.0;
+        if (codeDataForFactor) {
+          const createdAt = new Date(codeDataForFactor.created_at);
+          const usedAt = new Date();
+          const hoursToUse = (usedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+          // Faster use = higher credit worth (max 2x for instant use, min 0.5x for 30 days)
+          frozenCreditFactor = Math.max(0.5, 2 - (hoursToUse / (24 * 30)) * 1.5);
+        }
+        
         await supabase
           .from('agent_invitational_codes')
           .update({
             is_used: true,
             used_by_school_id: newSchool.id,
             school_name: registerForm.schoolName,
-            used_at: new Date().toISOString()
+            used_at: new Date().toISOString(),
+            credit_worth_factor: frozenCreditFactor // Freeze the factor at this value
           })
           .eq('id', promoCodeId);
 
