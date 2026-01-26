@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import HelpSupport from "./pages/HelpSupport";
+import VerificationSuccessPage from "./pages/VerificationSuccessPage";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/terms" element={<TermsAndConditions />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/help" element={<HelpSupport />} />
+            <Route path="/verification-success" element={<VerificationSuccessPage />} />
 
             {/* School Portal */}
             <Route path="/school/*" element={

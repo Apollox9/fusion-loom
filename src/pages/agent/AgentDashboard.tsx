@@ -291,12 +291,11 @@ export default function AgentDashboard() {
     toast.success('Code copied to clipboard!');
   };
 
-  const calculateCreditWorth = (code: InvitationalCode) => {
-    if (!code.used_at || !code.is_used) return 0;
-    const hoursToUse = differenceInHours(new Date(code.used_at), new Date(code.created_at));
-    // Faster use = higher credit worth (max 2x for instant use, min 0.5x for 30 days)
-    const factor = Math.max(0.5, 2 - (hoursToUse / (24 * 30)) * 1.5);
-    return factor;
+  // Now the credit_worth_factor is frozen when the code is used, so just display it
+  const getCreditWorth = (code: InvitationalCode) => {
+    if (!code.is_used) return 0;
+    // Return the frozen credit_worth_factor directly from the database
+    return code.credit_worth_factor;
   };
 
   const stats = useMemo(() => {
@@ -542,7 +541,7 @@ export default function AgentDashboard() {
                             </TableCell>
                             <TableCell>{code.school_name || '-'}</TableCell>
                             <TableCell>
-                              {code.is_used ? `${calculateCreditWorth(code).toFixed(2)}x` : '-'}
+                              {code.is_used ? `${getCreditWorth(code).toFixed(2)}x` : '-'}
                             </TableCell>
                             <TableCell>{formatDistanceToNow(new Date(code.created_at), { addSuffix: true })}</TableCell>
                             <TableCell>{new Date(code.expires_at).toLocaleDateString()}</TableCell>
