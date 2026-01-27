@@ -27,8 +27,14 @@ export default function VerificationSuccessPage() {
         const refreshToken = hashParams.get('refresh_token');
         const type = hashParams.get('type');
 
+        console.log('Verification page loaded with type:', type);
+        console.log('Has access token:', !!accessToken);
+        console.log('Has refresh token:', !!refreshToken);
+
         // If we have tokens from the email verification, set the session
-        if (accessToken && refreshToken && type === 'signup') {
+        // Accept 'signup', 'email', 'magiclink', or 'recovery' types
+        if (accessToken && refreshToken) {
+          console.log('Setting session with tokens...');
           const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
@@ -36,16 +42,28 @@ export default function VerificationSuccessPage() {
 
           if (sessionError) {
             console.error('Error setting session:', sessionError);
+            // Even if session setting fails, try to get existing session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              console.log('Found existing session for:', session.user.email);
+              setIsAuthenticated(true);
+              await confirmSchool(session.user);
+            }
           } else if (sessionData.user) {
+            console.log('Session set successfully for:', sessionData.user.email);
             setIsAuthenticated(true);
             await confirmSchool(sessionData.user);
           }
         } else {
-          // Try to get existing session
+          // No tokens in URL, try to get existing session
+          console.log('No tokens in URL, checking for existing session...');
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
+            console.log('Found existing session for:', session.user.email);
             setIsAuthenticated(true);
             await confirmSchool(session.user);
+          } else {
+            console.log('No session found');
           }
         }
       } catch (error) {
