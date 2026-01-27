@@ -176,7 +176,12 @@ export function AuthPage() {
         service_pass_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
         referred_by_agent_id: agentId,
         referral_code_used: promoCodeUsed,
-        referred_at: agentId ? new Date().toISOString() : null
+        referred_at: agentId ? new Date().toISOString() : null,
+        notification_preferences: {
+          receive_updates: registerForm.receiveUpdates,
+          email_notifications: true,
+          sms_notifications: false
+        }
       };
 
       // Delete any existing unconfirmed school with this email

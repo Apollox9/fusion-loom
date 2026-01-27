@@ -61,11 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('schools')
         .select('id, status, user_id')
         .eq('email', userEmail)
-        .eq('status', 'unconfirmed')
         .maybeSingle();
 
-      if (school && !school.user_id) {
-        await supabase
+      // Only update if school exists and either has unconfirmed status OR doesn't have user_id linked yet
+      if (school && (school.status === 'unconfirmed' || !school.user_id)) {
+        const { error: updateError } = await supabase
           .from('schools')
           .update({
             status: 'confirmed',
@@ -73,6 +73,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             registered_on: new Date().toISOString()
           })
           .eq('id', school.id);
+        
+        if (updateError) {
+          console.error('Error updating school confirmation:', updateError);
+        } else {
+          console.log('School confirmed successfully:', school.id);
+        }
         
         // Clear pending school ID from localStorage
         localStorage.removeItem('pendingSchoolId');
