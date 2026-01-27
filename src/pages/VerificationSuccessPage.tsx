@@ -1,23 +1,59 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CheckCircle, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function VerificationSuccessPage() {
   const navigate = useNavigate();
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(30);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [confirmationDone, setConfirmationDone] = useState(false);
 
   useEffect(() => {
-    // Check if user is authenticated
-    const checkAuth = async () => {
+    // Confirm school immediately on mount
+    const confirmSchool = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setIsAuthenticated(true);
+        const userEmail = session.user.email?.toLowerCase();
+        
+        if (userEmail) {
+          // Find and confirm the school
+          const { data: school } = await supabase
+            .from('schools')
+            .select('id, status, user_id')
+            .eq('email', userEmail)
+            .maybeSingle();
+
+          if (school && (school.status === 'unconfirmed' || !school.user_id)) {
+            const { error } = await supabase
+              .from('schools')
+              .update({
+                status: 'confirmed',
+                user_id: session.user.id,
+                registered_on: new Date().toISOString()
+              })
+              .eq('id', school.id);
+            
+            if (!error) {
+              console.log('School confirmed successfully:', school.id);
+              setConfirmationDone(true);
+            } else {
+              console.error('Error confirming school:', error);
+            }
+          } else if (school?.status === 'confirmed') {
+            setConfirmationDone(true);
+          }
+        }
+        
+        // Clear pending school ID from localStorage
+        localStorage.removeItem('pendingSchoolId');
       }
     };
-    checkAuth();
+
+    confirmSchool();
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -30,7 +66,7 @@ export default function VerificationSuccessPage() {
   }, []);
 
   useEffect(() => {
-    // Countdown timer
+    // Countdown timer - 30 seconds
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -44,6 +80,10 @@ export default function VerificationSuccessPage() {
 
     return () => clearInterval(timer);
   }, [navigate]);
+
+  const handleGoToDashboard = () => {
+    navigate('/school/dashboard');
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-accent/20 to-electric-blue/10 p-4 relative overflow-hidden">
@@ -90,7 +130,7 @@ export default function VerificationSuccessPage() {
                 stroke="currentColor"
                 strokeWidth="4"
                 strokeDasharray={251.2}
-                strokeDashoffset={251.2 - (countdown / 10) * 251.2}
+                strokeDashoffset={251.2 - (countdown / 30) * 251.2}
                 className="text-primary transition-all duration-1000 ease-linear"
                 strokeLinecap="round"
               />
@@ -100,22 +140,29 @@ export default function VerificationSuccessPage() {
             </div>
           </div>
           
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mb-6">
             Redirecting to your dashboard in <span className="font-bold text-primary">{countdown}</span> seconds...
           </p>
           
           {isAuthenticated && (
-            <p className="text-xs text-green-500 mt-4">
+            <p className="text-xs text-green-500 mb-4">
               ✓ You are now logged in
             </p>
           )}
           
-          <button
-            onClick={() => navigate('/school/dashboard')}
-            className="mt-6 text-primary hover:underline text-sm font-medium"
+          {confirmationDone && (
+            <p className="text-xs text-green-500 mb-4">
+              ✓ School account confirmed
+            </p>
+          )}
+          
+          <Button
+            onClick={handleGoToDashboard}
+            className="w-full bg-gradient-to-r from-primary to-primary-glow text-white font-semibold py-3"
           >
-            Go to dashboard now →
-          </button>
+            Go to Dashboard Now
+            <ArrowRight className="ml-2 w-4 h-4" />
+          </Button>
         </CardContent>
       </Card>
     </div>
