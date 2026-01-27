@@ -1,72 +1,138 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function VerificationSuccessPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [countdown, setCountdown] = useState(30);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [confirmationDone, setConfirmationDone] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(true);
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
-    // Confirm school immediately on mount
-    const confirmSchool = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setIsAuthenticated(true);
-        const userEmail = session.user.email?.toLowerCase();
-        
-        if (userEmail) {
-          // Find and confirm the school
-          const { data: school } = await supabase
-            .from('schools')
-            .select('id, status, user_id')
-            .eq('email', userEmail)
-            .maybeSingle();
+    // Handle the email verification token exchange
+    const handleEmailVerification = async () => {
+      if (hasProcessed.current) return;
+      hasProcessed.current = true;
 
-          if (school && (school.status === 'unconfirmed' || !school.user_id)) {
-            const { error } = await supabase
-              .from('schools')
-              .update({
-                status: 'confirmed',
-                user_id: session.user.id,
-                registered_on: new Date().toISOString()
-              })
-              .eq('id', school.id);
-            
-            if (!error) {
-              console.log('School confirmed successfully:', school.id);
-              setConfirmationDone(true);
-            } else {
-              console.error('Error confirming school:', error);
-            }
-          } else if (school?.status === 'confirmed') {
-            setConfirmationDone(true);
+      try {
+        // Check for hash fragments from email verification (Supabase sends tokens in URL hash)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const type = hashParams.get('type');
+
+        // If we have tokens from the email verification, set the session
+        if (accessToken && refreshToken && type === 'signup') {
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (sessionError) {
+            console.error('Error setting session:', sessionError);
+          } else if (sessionData.user) {
+            setIsAuthenticated(true);
+            await confirmSchool(sessionData.user);
+          }
+        } else {
+          // Try to get existing session
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            setIsAuthenticated(true);
+            await confirmSchool(session.user);
           }
         }
-        
-        // Clear pending school ID from localStorage
-        localStorage.removeItem('pendingSchoolId');
+      } catch (error) {
+        console.error('Error during email verification:', error);
+      } finally {
+        setIsProcessing(false);
       }
     };
 
-    confirmSchool();
+    const confirmSchool = async (user: any) => {
+      try {
+        const userEmail = user.email?.toLowerCase();
+        if (!userEmail) {
+          console.error('No user email found');
+          return;
+        }
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
+        console.log('Confirming school for email:', userEmail);
+
+        // Find the school by email
+        const { data: school, error: fetchError } = await supabase
+          .from('schools')
+          .select('id, status, user_id')
+          .eq('email', userEmail)
+          .maybeSingle();
+
+        if (fetchError) {
+          console.error('Error fetching school:', fetchError);
+          return;
+        }
+
+        if (!school) {
+          console.error('No school found for email:', userEmail);
+          return;
+        }
+
+        console.log('Found school:', school);
+
+        // Only update if school needs confirmation
+        if (school.status === 'unconfirmed' || !school.user_id) {
+          const { error: updateError } = await supabase
+            .from('schools')
+            .update({
+              status: 'confirmed',
+              user_id: user.id,
+              registered_on: new Date().toISOString()
+            })
+            .eq('id', school.id);
+
+          if (updateError) {
+            console.error('Error updating school:', updateError);
+          } else {
+            console.log('School confirmed successfully:', school.id);
+            setConfirmationDone(true);
+          }
+        } else if (school.status === 'confirmed') {
+          console.log('School already confirmed');
+          setConfirmationDone(true);
+        }
+
+        // Clear pending school ID from localStorage
+        localStorage.removeItem('pendingSchoolId');
+      } catch (error) {
+        console.error('Error confirming school:', error);
+      }
+    };
+
+    handleEmailVerification();
+
+    // Listen for auth state changes as backup
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      if (session?.user && !confirmationDone) {
         setIsAuthenticated(true);
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          await confirmSchool(session.user);
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [confirmationDone]);
 
   useEffect(() => {
-    // Countdown timer - 30 seconds
+    // Only start countdown after processing is done
+    if (isProcessing) return;
+
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -79,11 +145,25 @@ export default function VerificationSuccessPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [navigate]);
+  }, [navigate, isProcessing]);
 
   const handleGoToDashboard = () => {
     navigate('/school/dashboard');
   };
+
+  if (isProcessing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-accent/20 to-electric-blue/10 p-4">
+        <Card className="w-full max-w-lg shadow-electric bg-gradient-card border-border/50 backdrop-blur-sm">
+          <CardContent className="p-8 text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-lg text-foreground">Verifying your email...</p>
+            <p className="text-sm text-muted-foreground mt-2">Please wait while we confirm your account.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-accent/20 to-electric-blue/10 p-4 relative overflow-hidden">
