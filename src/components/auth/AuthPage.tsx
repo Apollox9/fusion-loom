@@ -880,7 +880,7 @@ export function AuthPage() {
               </Link>
             </div>
             <p className="mt-3 text-xs text-muted-foreground/70">
-              © 2025 Blaqlogic Digitals. All rights reserved.
+              © 2026 Blaqlogic Digitals. All rights reserved.
             </p>
           </div>
         </CardContent>

@@ -163,16 +163,16 @@ export default function PrivacyPolicy() {
                 </p>
                 <div className="bg-card border border-border/50 rounded-lg p-4">
                   <ul className="space-y-2 text-foreground/90">
-                    <li><strong>Email:</strong> privacy@blaqlogic.com</li>
-                    <li><strong>Phone:</strong> +255 XXX XXX XXX</li>
-                    <li><strong>Address:</strong> Blaqlogic Digitals, Tanzania</li>
+                    <li><strong>Email:</strong> privacy@projectfusion.cloud</li>
+                    <li><strong>Phone:</strong> +255 682 647 619</li>
+                    <li><strong>Address:</strong> Blaqlogic Digitals, Dar es Salaam-Tanzania</li>
                   </ul>
                 </div>
               </section>
 
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 mt-8">
                 <p className="text-foreground font-semibold text-center">
-                  Last updated: September 2, 2025
+                  Last updated: February 2, 2026
                 </p>
                 <p className="text-foreground/90 text-center mt-2">
                   By using Project Fusion, you acknowledge that you have read and understand this Privacy Policy.

@@ -167,9 +167,9 @@ const ContactPage = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground mb-2">General Inquiries</p>
-                  <p className="font-semibold">info@projectfusion.co.tz</p>
+                  <p className="font-semibold">info@projectfusion.cloud</p>
                   <p className="text-muted-foreground mt-4 mb-2">Technical Support</p>
-                  <p className="font-semibold">support@projectfusion.co.tz</p>
+                  <p className="font-semibold">support@projectfusion.cloud</p>
                 </CardContent>
               </Card>
 
@@ -182,9 +182,9 @@ const ContactPage = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground mb-2">Main Office</p>
-                  <p className="font-semibold">+255 XXX XXX XXX</p>
+                  <p className="font-semibold">+255 682 647 619</p>
                   <p className="text-muted-foreground mt-4 mb-2">Support Hotline</p>
-                  <p className="font-semibold">+255 XXX XXX XXX</p>
+                  <p className="font-semibold">+255 682 647 619</p>
                 </CardContent>
               </Card>
 

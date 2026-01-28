@@ -37,7 +37,7 @@ export default function HelpSupport() {
                     <Phone className="h-12 w-12 text-primary mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-foreground mb-2">Phone Support</h3>
                     <p className="text-foreground/70 mb-3">Call us directly for urgent issues</p>
-                    <p className="text-foreground font-medium">+255 XXX XXX XXX</p>
+                    <p className="text-foreground font-medium">+255 682 647 619</p>
                     <p className="text-sm text-foreground/60 mt-2">Mon-Fri: 8AM-6PM EAT</p>
                   </CardContent>
                 </Card>
@@ -47,7 +47,7 @@ export default function HelpSupport() {
                     <MessageCircle className="h-12 w-12 text-primary mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-foreground mb-2">WhatsApp</h3>
                     <p className="text-foreground/70 mb-3">Quick responses via WhatsApp</p>
-                    <p className="text-foreground font-medium">+255 XXX XXX XXX</p>
+                    <p className="text-foreground font-medium">+255 682 647 619</p>
                     <p className="text-sm text-foreground/60 mt-2">Available 24/7</p>
                   </CardContent>
                 </Card>
@@ -57,7 +57,7 @@ export default function HelpSupport() {
                     <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-foreground mb-2">Email Support</h3>
                     <p className="text-foreground/70 mb-3">Detailed support via email</p>
-                    <p className="text-foreground font-medium">support@blaqlogic.com</p>
+                    <p className="text-foreground font-medium">support@projectfusion.cloud</p>
                     <p className="text-sm text-foreground/60 mt-2">Response within 4 hours</p>
                   </CardContent>
                 </Card>
@@ -185,7 +185,7 @@ export default function HelpSupport() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div>
                     <p className="font-semibold text-foreground">Emergency Hotline:</p>
-                    <p className="text-foreground">+255 XXX XXX XXX</p>
+                    <p className="text-foreground">+255 682 647 619</p>
                   </div>
                   <div>
                     <p className="font-semibold text-foreground">Available:</p>
